@@ -8,11 +8,10 @@ class Panja:
 
     def __init__(self, cdir, odir, adir=None, tdir=None):
         '''
-        :param cdir: content
-            directory, location of verbatim HTML files to copy directly or Jinja
-            templates to render inheriting from theme templates. Other files may
-            be placed in this directory, and will simply be copied to the
-            output.
+        :param cdir:
+            content directory, location of verbatim HTML files to copy directly or Jinja
+            templates to render inheriting from theme templates. Other files may be placed
+            in this directory, and will simply be copied to the output.
 
         :param odir:
             output directory, location of processed output files for the final
@@ -44,11 +43,18 @@ class Panja:
             self.ttdir = None
             self.theme = False
 
-        self.global_context = {}
+        # compute global context variables for templates
+        articles = self.process_articles()
+
+        self.global_context = {
+            'article_list': articles
+        }
 
     def create_site(self):
         self.render_content()
-        self.render_articles()
+        
+        if self.adir is not None:
+            self.render_articles()
 
         # copy theme static files to output
         if self.tdir is not None:
@@ -71,7 +77,7 @@ class Panja:
                 template = env.get_template(filepath)
                 template.stream(self.global_context).dump(opath)
             else:
-                self.copy_file(os.path.join(self.cdir, filepath), opath)
+                shutil.copy2(os.path.join(self.cdir, filepath), opath)
 
     def render_articles(self, ext=['.md']):
         loader = FileSystemLoader(self.ttdir)
@@ -82,30 +88,15 @@ class Panja:
             opath = os.path.join(self.odir, filepath)
             self.check_dir(opath)
             if pathlib.Path(filepath).suffix in ext:
-                article = Article(filepath)
-                template = env.get_template('article.html')
-                template.stream(self.global_context).dump(opath)
+                pass
+                #article = Article(filepath)
+                #template = env.get_template('article.html')
+                #template.stream(self.global_context).dump(opath)
             else:
-                self.copy_file(os.path.join(self.adir, filepath), opath)
+                shutil.copy2(os.path.join(self.adir, filepath), opath)
 
-    def copy_file(self, ipath, opath):
-        shutil.copy2(ipath, opath)
-        
-    def directory_tree(self, path):
-        '''Return list of paths for all non-hidden files __inside__ of `path`. '''
-        paths = []
-        for (dirpath, dirnames, filenames) in os.walk(path):
-            paths += [os.path.relpath(os.path.join(dirpath, file), path) \
-                      for file in filenames if not file.startswith('.')]
-        return paths
-    
-    def check_dir(self, path):
-        '''Check if `path` exists, creating the necessary directories if not'''
-        outdir = os.path.dirname(path)
-        if not os.path.exists(outdir):
-            os.makedirs(outdir)
-
-class Article:
-
-    def __init__(self, path):
-        pass
+    def process_articles(self):
+        articles = []
+        for filepath in self.directory_tree(self.adir):
+            articles.append(Article(filepath))
+        return articles
