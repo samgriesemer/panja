@@ -1,0 +1,225 @@
+
+
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <!-- default feed settings -->
+        
+            <title>
+    Category theory - samgriesemer
+</title>
+
+            <!-- inheriting document meta tags -->
+            
+		<meta charset="utf-8" />
+            
+    
+    
+
+            
+            
+            
+            
+            
+            
+            
+
+            <!-- Fathom - simple website analytics - https://github.com/usefathom/fathom -->
+            <script>
+              (function(f, a, t, h, o, m){
+                a[h]=a[h]||function(){
+                  (a[h].q=a[h].q||[]).push(arguments)
+                };
+                o=f.createElement('script'),
+                m=f.getElementsByTagName('script')[0];
+                o.async=1; o.src=t; o.id='fathom-script';
+                m.parentNode.insertBefore(o,m)
+              })(document, window, '//fathom.smgr.io/tracker.js', 'fathom');
+              fathom('set', 'siteId', 'VYRHF');
+              fathom('trackPageview');
+            </script>
+            <!-- / Fathom -->
+
+            <!-- inheriting document styles -->
+            
+    
+		<link rel="icon" href="/static/img/favicon.ico" type="image/x-icon">
+                <link rel="stylesheet" type="text/css" href="/static/css/font.css">
+                <link rel="stylesheet" type="text/css" href="/static/css/base.css">
+            
+    <link rel="stylesheet" type="text/css" href="/static/css/page.css">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="/static/css/article.css">
+
+    <!-- load only to handle math formatting in TOC, all other math rendered on the server side -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js" integrity="sha384-y23I5Q6l+B6vatafAwxRu/0oK/79VlbSz7Q9aiSZUvyWYIYsd+qj+o24G5ZU2zJz" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js" integrity="sha384-kWPLUVMOks5AQFrykwIup5lo0m3iMkkHrD0uJ4H5cjeGihAutqP0yW0J6dpFiVkI" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+
+    </head>
+    <body>
+        <header>
+            
+    <!--<a href='/' id='logo'><img src='/static/img/logo_black.svg'></a>-->
+<nav>
+    <a href='/' style='float: left; margin-left: 0;'>SAM GRIESEMER</a>
+    
+</nav>
+</header>
+        <main>
+            
+    
+    <article>
+        
+        <header>
+            
+                <h1>Category theory</h1>
+            
+
+            
+
+            <section id='metadata'>
+                <span>
+                    Created:
+                    <time class="published" datetime="2020-05-26">
+                        2020-05-26
+                    </time>
+                </span><br>
+
+                
+                <span>
+                    Modified:
+                    <time class="modified" datetime="2020-08-21">
+                        2020-08-21
+                    </time>
+                </span>
+                
+
+                
+                
+                
+
+                
+            </section>
+        </header>
+
+        
+        <section id='content'>
+            <nav class='toc'><ul>
+<li><a href="#morphisms">Morphisms</a></li>
+<li><a href="#classes">Classes</a></li>
+<li><a href="#categories">Categories</a></li>
+<li><a href="#table-of-common-categories">Table of Common Categories</a></li>
+</ul></nav>
+<p>[TOC]</p>
+<div id="abstract" data-markdown="1">
+<p>Category theory attempts to generalize all of mathematics using <em>categories</em>.</p>
+</div>
+<section id="morphisms" class="level1">
+<h1>Morphisms</h1>
+<p>A <strong>morphism</strong> is the generalization of functions to mathematical structures beyond sets. It is formally defined as a structure-preserving map from one mathematical structure to another of the same type. For example, in set theory, morphisms are functions, while in group theory they are group homomorphisms, or linear transformations in linear algebra.</p>
+<p>The <em>arrows</em> in category theory are morphisms between the objects in a category.</p>
+</section>
+<section id="classes" class="level1">
+<h1>Classes</h1>
+<p>A <strong>class</strong> is a collection of sets whereby all members share a certain property. Classes are informal structures in standard (ZF) <a href="Set_theory">Set theory</a> (as not all collections of things are considered sets under ZF axioms). Classes that are not sets are called <em>proper classes</em>, while classes that <em>are</em> sets are called <em>small classes</em>. Classes are useful because they escape some limitations of formally defined sets; in category theory, they are the containers for objects and morphisms (as seen below).</p>
+</section>
+<section id="categories" class="level1">
+<h1>Categories</h1>
+<p>A <strong>category</strong> is a collection of <em>objects</em> linked together with <em>arrows</em> having two basic properties:</p>
+<ol type="1">
+<li>The ability to compose arrows associatively (i.e. invariance to the order of application)</li>
+<li>The existence of an identity arrow for each object</li>
+</ol>
+<p>Common examples include <strong>Sets</strong> (objects) and (set) functions (arrows), rings and ring homomorphisms, and topological spaces and continuous maps. Categories generally serve to represent abstractions of mathematical concepts.</p>
+<p>Formally, a category <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>C</mi></mrow><annotation encoding="application/x-tex">C</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathdefault" style="margin-right:0.07153em;">C</span></span></span></span> is defined as consisting of</p>
+<ul>
+<li>A class of objects, denoted <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mtext>ob</mtext><mo>(</mo><mi>C</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">\text{ob}(C)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord text"><span class="mord">ob</span></span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.07153em;">C</span><span class="mclose">)</span></span></span></span></li>
+<li>A class of morphisms between objects. Each morphism <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>f</mi></mrow><annotation encoding="application/x-tex">f</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span></span></span></span> has a source object <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>s</mi></mrow><annotation encoding="application/x-tex">s</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathdefault">s</span></span></span></span> and target object <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>t</mi></mrow><annotation encoding="application/x-tex">t</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.61508em;vertical-align:0em;"></span><span class="mord mathdefault">t</span></span></span></span> written <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>f</mi><mo>:</mo><mi>s</mi><mo>→</mo><mi>t</mi></mrow><annotation encoding="application/x-tex">f: s \rightarrow t</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">:</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathdefault">s</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">→</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.61508em;vertical-align:0em;"></span><span class="mord mathdefault">t</span></span></span></span>. <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mtext>hom</mtext><mo>(</mo><mi>s</mi><mo separator="true">,</mo><mi>t</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">\text{hom}(s,t)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord text"><span class="mord">hom</span></span><span class="mopen">(</span><span class="mord mathdefault">s</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault">t</span><span class="mclose">)</span></span></span></span> refers to the class of morphisms from <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>s</mi></mrow><annotation encoding="application/x-tex">s</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathdefault">s</span></span></span></span> to <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>t</mi></mrow><annotation encoding="application/x-tex">t</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.61508em;vertical-align:0em;"></span><span class="mord mathdefault">t</span></span></span></span>. Note that <span class="katex-display"><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mtext>hom</mtext><mo>(</mo><mi>C</mi><mo>)</mo><mo>=</mo><msub><mo>∪</mo><mrow><mi>s</mi><mo separator="true">,</mo><mi>t</mi><mo>∈</mo><mtext>obj</mtext><mo>(</mo><mi>C</mi><mo>)</mo></mrow></msub><mtext>hom</mtext><mo>(</mo><mi>s</mi><mo separator="true">,</mo><mi>t</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">\text{hom}(C) = \cup_{s,t\in\text{obj}(C)} \text{hom}(s,t)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord text"><span class="mord">hom</span></span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.07153em;">C</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1.1052em;vertical-align:-0.3551999999999999em;"></span><span class="mord"><span class="mbin">∪</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.34480000000000005em;"><span style="top:-2.5198em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathdefault mtight">s</span><span class="mpunct mtight">,</span><span class="mord mathdefault mtight">t</span><span class="mrel mtight">∈</span><span class="mord text mtight"><span class="mord mtight">obj</span></span><span class="mopen mtight">(</span><span class="mord mathdefault mtight" style="margin-right:0.07153em;">C</span><span class="mclose mtight">)</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.3551999999999999em;"><span></span></span></span></span></span></span><span class="mord text"><span class="mord">hom</span></span><span class="mopen">(</span><span class="mord mathdefault">s</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault">t</span><span class="mclose">)</span></span></span></span></span></li>
+<li>Morphisms can be composed such that <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mtext>hom</mtext><mo>(</mo><mi>a</mi><mo separator="true">,</mo><mi>b</mi><mo>)</mo><mo>×</mo><mtext>hom</mtext><mo>(</mo><mi>b</mi><mo separator="true">,</mo><mi>c</mi><mo>)</mo><mo>→</mo><mtext>hom</mtext><mo>(</mo><mi>a</mi><mo separator="true">,</mo><mi>c</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">\text{hom}(a,b) \times \text{hom}(b,c) \rightarrow \text{hom}(a,c)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord text"><span class="mord">hom</span></span><span class="mopen">(</span><span class="mord mathdefault">a</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault">b</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord text"><span class="mord">hom</span></span><span class="mopen">(</span><span class="mord mathdefault">b</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault">c</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">→</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord text"><span class="mord">hom</span></span><span class="mopen">(</span><span class="mord mathdefault">a</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault">c</span><span class="mclose">)</span></span></span></span> for objects <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>a</mi></mrow><annotation encoding="application/x-tex">a</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathdefault">a</span></span></span></span>, <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>b</mi></mrow><annotation encoding="application/x-tex">b</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.69444em;vertical-align:0em;"></span><span class="mord mathdefault">b</span></span></span></span>, and <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>c</mi></mrow><annotation encoding="application/x-tex">c</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathdefault">c</span></span></span></span>.</li>
+</ul>
+</section>
+<section id="table-of-common-categories" class="level1">
+<h1>Table of Common Categories</h1>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Category</th>
+<th style="text-align: left;">Objects</th>
+<th style="text-align: left;">Morphisms</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Grp</td>
+<td style="text-align: left;">groups</td>
+<td style="text-align: left;">group homomorphisms</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Mag</td>
+<td style="text-align: left;">magmas</td>
+<td style="text-align: left;">magma homomorphisms</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Manp</td>
+<td style="text-align: left;">smooth manifolds</td>
+<td style="text-align: left;">p-times continuously differentiable maps</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Met</td>
+<td style="text-align: left;">metric spaces</td>
+<td style="text-align: left;">short maps</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">R-Mod</td>
+<td style="text-align: left;">R-modules, where R is a ring</td>
+<td style="text-align: left;">R-module homomorphisms</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Mon</td>
+<td style="text-align: left;">monoids</td>
+<td style="text-align: left;">monoid homomorphisms</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ring</td>
+<td style="text-align: left;">rings</td>
+<td style="text-align: left;">ring homomorphisms</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Set</td>
+<td style="text-align: left;">sets</td>
+<td style="text-align: left;">functions</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Top</td>
+<td style="text-align: left;">topological spaces</td>
+<td style="text-align: left;">ontinuous functions</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Uni</td>
+<td style="text-align: left;">uniform spaces</td>
+<td style="text-align: left;">uniformly continuous functions</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">VectK</td>
+<td style="text-align: left;">vector spaces over the field K</td>
+<td style="text-align: left;">K-linear maps</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+        </section>
+
+        
+        <footer>
+            <!--<p>Article footer</p>-->
+        </footer>
+    </article>
+</main>
+        <footer>
+            </footer>
+
+        </body>
+</html>

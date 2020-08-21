@@ -1,0 +1,41 @@
+{## 
+ # basic page template inheriting directly from base; modifies title, adds `page` styles, 
+ # local site header, page meta tags, and a very simple (overwriteable) content section 
+ #}
+
+{% extends "base.html" %}
+
+{# delayed from base to use `page` object #}
+{% block title %}
+    {{ page.title }} - {{ SITENAME }}
+{% endblock %}
+
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet" type="text/css" href="/static/css/page.css">
+{% endblock %}
+
+{# main site header #}
+{% block header %}
+    {% include 'header.html' %}
+{% endblock %}
+
+{# additional meta tags #}
+{% block meta %}
+    {{ super() }}
+    {% if page.description %}
+        <meta name="description" content="{{page.description}}" />
+    {% endif %}
+    {% for tag in page.tags %}
+        <meta name="tags" content="{{tag}}" />
+    {% endfor %}
+{% endblock %}
+
+{# main page content #}
+{% block main %}
+    <h1>{{ page.title }}</h1>
+    {{ page.content }}
+    {% if page.modified %}
+        <p>Last updated: {{ page.locale_modified }}</p>
+    {% endif %}
+{% endblock %}

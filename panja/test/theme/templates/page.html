@@ -1,0 +1,17 @@
+{## 
+ # basic page template inheriting directly from base; modifies title, adds `page` styles, 
+ # local site header, page meta tags, and a very simple (overwriteable) content section 
+ #}
+
+{% extends "base.html" %}
+
+{% block styles %}
+		{{ super() }}
+    <link rel="stylesheet" type="text/css" href="/static/css/page.css">
+{% endblock %}
+
+{# main site header #}
+{% block header %}
+    {% include 'header.html' %}
+{% endblock %}
+

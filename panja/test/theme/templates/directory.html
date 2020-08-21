@@ -1,0 +1,51 @@
+{##
+ # Directory template, renders display link "table" for files that call this template. Note that you cannot
+ # wrap raw tables with links, and thus tables are not well suited for the job.
+ #}
+
+{% extends "page.html" %}
+
+{% block main %}
+<!--     <table class='dtable'>
+        <thead><tr>
+            {% for col in head %}
+                <th>{{ col }}</th>
+            {% endfor %}
+        </tr></thead>
+        <tbody>
+            {% for row in body %}
+                <tr><a href="{{ row[-1] }}">
+                    {% for col in row[:-1] %}
+                        {% if col == 'id' %}
+                            <td>{{ '{0:02d}'.format(loop.index) }}</td>
+                        {% else %}
+                            <td>{{ col }}</td>
+                        {% endif %}
+                    {% endfor %}
+                </a></tr>
+            {% endfor %}
+        </tbody>
+    </table> -->
+    <h1 class='big'>{{ directory }}</h1>
+    <section class='dtable'>
+        <div id='head' class='row'>
+            {% for col in head %}
+                <span class='lt'>{{ col }}</span>
+            {% endfor %}
+        </div>
+        <div id='body'>
+            {% for row in body %}
+                {% set outer_loop = loop %}
+                <a href="{{ row[-1] }}"><div class='row line'>
+                    {% for col in row[:-1] %}
+                        {% if col == 'id' %}
+                            <span>{{ '{0:02d}'.format(outer_loop.index) }}</span>
+                        {% else %}
+                            <span>{{ col }}</span>
+                        {% endif %}
+                    {% endfor %}
+                </div></a>
+            {% endfor %}
+        </div>
+    </section>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "page.html" -%}
+
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet" type="text/css" href="/projects/evolution/css/evolution.css">
+{% endblock %}
+
+{% block main %}
+  <h1>Evolution Simulation</h1>
+  <p>evolving neural network creatures to stay on the page</p>
+
+  <section class='row'>
+    <div id='main-container'></div>
+    <section>
+      <h2>Best Creature Stats</h2>
+      <ul>
+        <li id='fitness'></li>
+        <li id='vel'></li>
+        <li id='time'></li>
+        <li id='gen'></li>
+      </ul>
+
+      <h2>Best Creature Brain</h2>
+      <div id='net-container'></div>
+
+      <!--<h2>Details</h2>
+      <ul>
+        <li>Each creature has a 3-layer neural network for a brain, taking 4 inputs (page coordinates and velocity components) and giving 2 outputs (new velocity components).</li>
+        <li>A child creature is born each time an existing creature dies (i.e. goes off the screen). This child creature has a brain structure that is a mixture of two randomly selected creatures' brains currently on the screen.</li>
+        <li>Similar colors are indicative of similiar species.</li>
+        <li>The fitness function is defined to reward high velocity movement while staying on the screen for as long as possible.</li>
+        <li>Code available on <b><a href='https://github.com/samgriesemer/nnjs'>Github</a></b></li>
+      </ul>-->
+      <p>&rarr; Code available on <b><a href='https://github.com/samgriesemer/evolution-simulator'>Github</a></b></p>
+    </section>
+  </section>
+{% endblock -%}
+
+{% block scripts %}
+    {{ super() }}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.3/p5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.6/addons/p5.dom.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sylvester/0.1.3/sylvester.js"></script>
+
+    <script src="/projects/evolution/js/nn.js"></script>
+    <script src="/projects/evolution/js/evolution.js"></script>
+{% endblock %}

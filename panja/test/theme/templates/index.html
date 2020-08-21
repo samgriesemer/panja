@@ -1,0 +1,51 @@
+{% extends "page.html" -%}
+
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet" type="text/css" href="/static/css/index.css">
+{% endblock %}
+
+{% block main %}
+  <div class='card'>
+    <h1 class='title text_fade'><a href='projects/nn'>Interactive Neural Network</a></h1>
+    <p class='description text_fade'>Explore the inner workings of neural networks by tuning parameters and watching how they learn in real time</p>
+    <!-- <svg class='fill_fade floating'><rect width='400px' height='250px'></rect></svg> -->
+    <!--<svg class='fill_fade floating'><circle cx='50' cy='50' r='40' fill='red'></circle></svg>-->
+  </div>
+  <svg class='simulation'></svg>
+{% endblock %}
+
+{% block footer %}
+  <div style='right:0'>
+    <p class='pagenum text_fade'>01</p>
+  </div>
+{% endblock %}
+
+{% block scripts -%}
+    <script>
+        let card_data = {
+            "titles": [
+                "Interactive Neural Network",
+                "Evolution Simulator",
+                "Monte Carlo Tic-Tac-Toe",
+                "Realtime Dashboard"
+            ],
+            "descriptions": [
+                "Explore the inner workings of neural networks by tuning parameters and watching how they learn in real time",
+                "A visual implementation of neuroevolution that runs in the browser",
+                "Play against an unbeatable tic-tac-toe bot that learns optimal play",
+                "Get quick information with this sleek, experimental interface"
+            ],
+            "urls": [
+                "projects/nn",
+                "projects/evolution",
+                "projects/mcttt",
+                "projects/dashboard"
+            ],
+            "pagenums": ["01","02","03","04"]
+        }
+    </script>
+    <script src='/static/js/d3.v5.min.js'></script>
+    <script src='/static/js/index/index.js'></script>
+    <script src='/static/js/index/simulation.js'></script>
+{% endblock %}

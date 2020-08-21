@@ -1,0 +1,80 @@
+/***********/
+/* GENERAL */
+/***********/
+/* add body margin, grid layout */
+body {
+    margin: 0 10%;
+    display: grid;
+    min-height: 100vh;
+    grid-template-rows: 4em 1fr 4em;
+    font-family: 'Akkurat';
+}
+
+.row, .col {
+  display: grid;
+  grid-gap: 1em;
+}
+
+.row {
+  grid-auto-flow: column;
+}
+
+.col {
+  grid-auto-flow: row;
+}
+
+/**********/
+/* HEADER */
+/**********/
+body > header {
+    position: relative;
+    border-bottom: 1px solid black;
+    z-index: 1;
+}
+
+/* centering header elements */
+body > header > *, body > footer > * {
+    margin: 0;
+    padding: 0;
+    top: 50%;
+    position: absolute;
+    transform: translateY(-50%);
+}
+
+/* shift header right */
+header > nav {
+    width: 100%;
+}
+
+/* nav link spacing */
+header > nav > a:any-link {
+    margin-left: 1.5em;
+    letter-spacing: 2px;
+    font-size: 12px !important;
+    text-decoration: none;
+    float: right;
+}
+
+/* row headers */
+.row h1 {
+    margin-bottom: 0.2em;
+}
+
+/**********/
+/* FOOTER */
+/**********/
+body > footer {
+    position: relative;
+}
+
+/********/
+/* LOGO */
+/********/
+#logo {
+    width: 23px;
+    margin-top: 5px;
+}
+
+#logo:hover {
+    background-size: 0% !important;
+}

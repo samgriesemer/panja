@@ -1,0 +1,33 @@
+{% extends "page.html" %}
+
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet" type="text/css" href="/static/css/article.css">
+{% endblock %} {% block main %}
+    <h1>Wiki</h1>
+    <p><i>This page includes notes from my personal wiki. Page topics vary wildly, and generally serve as informal collections of knowledge that I anticipate being useful at some point in the future. If you'd like to hook this feed up somewhere, use this RSS link.</i></p><br>
+    <!-- single container element -> tag on same line -->
+    <ol id="post-list" style="columns:2; column-gap:6em">
+        {% for article in articles_page.object_list %}
+           {% if article.system %}
+               {% if article.system == 'wiki' %}
+                    <li><article>
+                        <header><span>
+                            <a href="{{ SITEURL }}/{{ article.url }}" rel="bookmark" title="Permalink to {{ article.title|striptags }}">{{ article.title }}</a>
+                        {% if article.summary %}
+                            <span><i class='grey'>- {{ article.summary|striptags }}</i></span>
+                        {% endif %}
+                        </span></header>
+                        <!--<footer>
+                            <time class="published" datetime="{{ article.date.isoformat() }}"> {{ article.locale_date }} </time>
+                        </footer>-->
+                    </article></li>
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+    </ol>
+
+    {% if articles_page.has_other_pages() %}
+        {% include 'pagination.html' %}
+    {% endif %}
+{% endblock main %}

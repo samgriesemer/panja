@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <!-- default feed settings -->
+        
+            <title></title>
+
+            <!-- inheriting document meta tags -->
+            <meta charset="utf-8" />
+            
+            
+            
+            
+            
+            
+            
+            
+
+            <!-- Fathom - simple website analytics - https://github.com/usefathom/fathom -->
+            <script>
+              (function(f, a, t, h, o, m){
+                a[h]=a[h]||function(){
+                  (a[h].q=a[h].q||[]).push(arguments)
+                };
+                o=f.createElement('script'),
+                m=f.getElementsByTagName('script')[0];
+                o.async=1; o.src=t; o.id='fathom-script';
+                m.parentNode.insertBefore(o,m)
+              })(document, window, '//fathom.smgr.io/tracker.js', 'fathom');
+              fathom('set', 'siteId', 'VYRHF');
+              fathom('trackPageview');
+            </script>
+            <!-- / Fathom -->
+
+            <!-- inheriting document styles -->
+            
+    <link rel="icon" href="/static/img/favicon.ico" type="image/x-icon">
+                <link rel="stylesheet" type="text/css" href="/static/css/font.css">
+                <link rel="stylesheet" type="text/css" href="/static/css/base.css">
+            
+    <link rel="stylesheet" type="text/css" href="/projects/dashboard/css/index.css"></link>
+
+    </head>
+    <body>
+        <header>
+            </header>
+        <main>
+             
+    <section class='grid'>
+        <div class='header'>
+            <p>DASH (in development)</p>
+            <span class='dot'></span>
+        </div>
+
+        <div class='cell' id='time'>
+            <h4>TIME</h4>
+            <span id='time-content' class='highlight'></span>
+            <span id='date-content'></span>
+        </div>
+
+        <div class='cell' id='weather'>
+            <h4>WEATHER</h4>
+            <span class='bigger highlight' id='weather-temp'></span>
+            <span class='big' id='weather-summary'></span>
+            <span class='grey'>
+                Feels like
+                <span id='weather-aptemp'></span>
+                <br>
+                <span id='weather-precip'></span>
+            </span>
+            <span class='refresh-time'></span>
+        </div>
+
+        <div class='cell' id='crypto'>
+            <h4>CRYPTO</h4>
+            <section class='row'>
+                <section class='col'>
+                    <div id='crypto-btc-content'>
+                        <span class='big' id='crypto-btc-price'></span>
+                        <span class='highlight' id='crypto-btc-change'></span>
+                        <i class='grey'>BTC</i>
+                    </div>
+                    <div id='crypto-eth-content'>
+                        <span class='big' id='crypto-eth-price'></span>
+                        <span class='highlight' id='crypto-eth-change'></span>
+                        <i class='grey'>ETH</i>
+                    </div>
+                </section>
+                <svg id='stock-line'></svg>
+            </section>
+            <span class='refresh-time'></span>
+        </div>
+      
+        <div class='cell' id='news'>
+            <h4>NEWS</h4>
+            <span id='news-content'></span>
+            <span class='refresh-time'></span>
+        </div>
+
+        <div class='cell' id='stocks'>
+            <h4>STOCKS</h4>
+            <section class='row'>
+                <section id='stocks-aapl-content'>
+                    <span class='big' id='stocks-aapl-price'></span>
+                    <span class='highlight' id='stocks-aapl-change'></span>
+                    <i class='grey'>AAPL</i>
+                </section>
+            </section>
+        </div>
+
+        <div class='cell' id='reddit'>
+            <h4>REDDIT</h4>
+            <span id='reddit-content'></span>
+            <span class='refresh-time'></span>
+        </div>
+
+        <div class='cell' id='twitter'>
+            <h4>TWITTER</h4>
+            <span id='twitter-content'></span>
+            <span class='refresh-time'></span>
+        </div>
+    </section>
+</main>
+        <footer>
+            </footer>
+
+         
+    <script src="/static/js/d3.v5.min.js"></script>
+    <script src="/projects/dashboard/js/dashboard.js"></script>
+    <script src="/projects/dashboard/js/plots/a_line.js"></script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+@font-face { 
+  font-family: 'Akkurat';
+  src: url('../assets/akkurat-mono/akkurat-mono.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'scp';
+  src: url('../assets/scp/SourceCodePro-Regular.ttf.woff2') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'SSP';
+  src: url('../assets/ssp/ssp-reg.woff2') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'SSP';
+  src: url('../assets/ssp/ssp-bold.woff2') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+body {
+  font-family: 'scp', monospace;
+  margin: 0;
+}
+
+h4 {
+  margin: 0;
+  color: #000;
+  font-weight: bold;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: repeat(13, 1fr);
+  grid-gap: 15px;
+
+  background-color: #fff;
+
+  padding: 1vh 1vw;
+  width: 98vw;
+  height: 98vh;
+}
+
+.row, .col {
+  display: grid;
+  grid-gap: 1em;
+}
+
+.row {
+  grid-auto-flow: column;
+}
+
+.col {
+  grid-auto-flow: row;
+}
+
+.inner-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+.header {
+  grid-column: span 12;
+  grid-row: span 1;
+  text-align: center;
+}
+
+.header > * {
+  display: inline-block;
+}
+
+.cell {
+  /*background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.15);*/
+  padding: 2vh;
+
+  grid-column: span 6;
+  grid-row: span 4;
+  overflow: auto;
+  position: relative;
+
+  /* experimental */
+  border-top: 1px solid black;
+  border-left: 1px solid black;
+}
+
+.refresh-time {
+  position: absolute;
+  right: 1vh;
+  bottom: 1vh;
+  color: #5FE5C8;
+  font-weight: bold;
+}
+
+#twitter, #reddit {
+  grid-column: span 3;
+}
+
+#time > #time-content {
+  font-size: 4em;
+  display: block;
+}
+
+.big {
+  font-size: 2em;
+  display: block;
+}
+
+.bigger {
+  font-size: 4em;
+  display: block;
+}
+
+.highlight {
+  color: #003cff;
+}
+
+.grey {
+  color: #C9C9C9;
+}
+
+.dot {
+  height: 18px;
+  width: 18px;
+  border: 0px solid black;
+  background-color: black;
+  border-radius: 50%;
+  float: right;
+  margin-top: 15px;
+  position: absolute;
+  right: 15px;
+}

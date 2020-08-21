@@ -1,0 +1,7 @@
+<!--<a href='/' id='logo'><img src='/static/img/logo_black.svg'></a>-->
+<nav>
+    <a href='/' style='float: left; margin-left: 0;'>SAM GRIESEMER</a>
+    {% for title, link in MENUITEMS %}
+        <a href="{{ link }}">{{ title }}</a>
+    {% endfor %}
+</nav>

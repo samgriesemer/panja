@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block main %}
+    <h1>All articles</h1>
+
+    <!-- single container element -> tag on same line -->
+    <ol id="post-list">
+        {% for article in articles_page.object_list %}
+          {##
+           # restrict article list based on inheriting `article_source` variable. Allows other index files to
+           # inherit from this and keep boilerplate low, without needing access to the `article_page` object
+           # directly or being an explicit template. Inheriting files need to define this `article_source` variable
+           # if they'd like to filter their article list; otherwise, the primary index is unaffected.
+           #}
+           {#            {% if article_source %} #}
+           {#                {% if 'wiki' in article.path %} #}
+                    <li><article>
+                        <header>
+                            <h2><a href="{{ SITEURL }}/{{ article.url }}" rel="bookmark" title="Permalink to {{ article.title|striptags }}">{{ article.title }}</a></h2>
+                        </header>
+                        <p> {{ article.summary }} </p>
+                        <footer>
+                            <time class="published" datetime="{{ article.date.isoformat() }}"> {{ article.locale_date }} </time>
+                            {#<address class="vcard author">By
+                            {% for author in article.authors %}
+                                <a href="{{ SITEURL }}/{{ author.url }}">{{ author }}</a>
+                            {% endfor %}
+                            </address>#}
+                        </footer>
+                    </article></li>
+                    {# {% endif %} #}
+                {#            {% endif %}#}
+        {% endfor %}
+    </ol>
+
+    {% if articles_page.has_other_pages() %}
+        {% include 'pagination.html' %}
+    {% endif %}
+{% endblock main %}

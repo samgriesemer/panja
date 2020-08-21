@@ -1,0 +1,103 @@
+body {
+    overflow: hidden;
+}
+
+/* whole-page cards */
+/* relative position on whole card makes child svg absolute wrt to it */
+.card {
+    margin: 16vh 40vw 0 0;
+    position: relative;
+    z-index: 1;
+}
+
+/* make relative position z-index can be modified */
+.card :not(svg) {
+    position: relative;
+    z-index: 1; 
+}
+
+.card > .title {
+    display: inline-block;
+    margin: 0;
+}
+
+.card > .title > a:any-link {
+    background: linear-gradient(transparent 0%, #000 4px) left;
+    background-repeat: no-repeat;
+    background-size: 0% 100%;
+
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: 1px black;
+    color: white !important;
+
+    transition: background-size 0.4s;
+    text-decoration: none;
+}
+
+.card > .title > a:any-link:hover {
+    background-size: 100% 100% !important;
+}
+
+.card > .tag {
+    color: #000;
+}
+
+.card > .description {
+    font-style: italic;
+    color: black;
+    padding-left: 6px;
+}
+
+/* svg styles */
+/*svg {
+  height: 400px;
+  width: 500px;
+  position: absolute;
+  top: 200px;
+  left: 650px;
+  z-index: 0;
+  transform: rotate(200deg);
+  border: 1px solid #003CFF;
+  fill: white;
+}
+
+svg > rect {
+  height: 250px;
+  width: 400px;
+}*/
+
+svg {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    z-index: 0;
+}
+
+/* animations */
+.floating {  
+    animation-name: floating;
+    animation-duration: 8s;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in-out;
+}
+
+@keyframes floating {
+    from { transform: translate(0, 0px) rotate(200deg); }
+    50%  { transform: translate(0, 15px) rotate(197deg); }
+    to   { transform: translate(0, -0px) rotate(200deg); }    
+}
+
+.bg_fade {
+    transition: background-color 1s ease;
+}
+
+.fill_fade {
+    transition: fill 0.8s;
+    transition-timing-function: ease;
+}
+
+.text_fade {
+    transition: transform 0.5s, opacity 0.4s;
+    transition-timing-function: ease-in-out;
+}

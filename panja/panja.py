@@ -1,7 +1,10 @@
 import os
-from jinja2 import FileSystemLoader, Environment
 import shutil
 import pathlib
+from jinja2 import FileSystemLoader, Environment
+
+import util
+from article import Article
 
 class Panja:
     '''Panja class, core implementation for handling site rendering'''
@@ -44,23 +47,22 @@ class Panja:
             self.theme = False
 
         # compute global context variables for templates
-        articles = self.process_articles()
-
+        self.process_articles()
         self.global_context = {
-            'article_list': articles
+            'article_list': self.articles
         }
 
     def create_site(self):
         self.render_content()
         
-        if self.adir is not None:
-            self.render_articles()
-
         # copy theme static files to output
         if self.tdir is not None:
             ipath = os.path.join(self.tdir, 'static')
             opath = os.path.join(self.odir, 'static')
             shutil.copytree(ipath, opath)
+
+        if self.adir is not None:
+            self.render_articles()
 
     def render_content(self, ext=['.html']):
         # set template context if exists
@@ -70,33 +72,40 @@ class Panja:
         env = Environment(loader=loader)
 
         # render content templates
-        for filepath in self.directory_tree(self.cdir):
+        for filepath in util.directory_tree(self.cdir):
             opath = os.path.join(self.odir, filepath)
-            self.check_dir(opath)
+            util.check_dir(opath)
             if pathlib.Path(filepath).suffix in ext:
                 template = env.get_template(filepath)
                 template.stream(self.global_context).dump(opath)
             else:
-                shutil.copy2(os.path.join(self.cdir, filepath), opath)
+                util.copy_file(os.path.join(self.cdir, filepath), opath)
 
     def render_articles(self, ext=['.md']):
         loader = FileSystemLoader(self.ttdir)
         env = Environment(loader=loader)
 
-        # render content templates
-        for filepath in self.directory_tree(self.adir):
-            opath = os.path.join(self.odir, filepath)
-            self.check_dir(opath)
-            if pathlib.Path(filepath).suffix in ext:
-                pass
-                #article = Article(filepath)
-                #template = env.get_template('article.html')
-                #template.stream(self.global_context).dump(opath)
-            else:
-                shutil.copy2(os.path.join(self.adir, filepath), opath)
+        for article in self.articles:
+            if not article.valid: continue
+            opath = os.path.join(self.odir, article.relpath)
+            opath = opath.split('.')
+            opath[-1] = 'html'
+            opath = '.'.join(opath)
+            
+            template = env.get_template('article.html')
+            context = {'article': article}
+            context.update(self.global_context)
+            template.stream(context).dump(opath)
 
-    def process_articles(self):
-        articles = []
-        for filepath in self.directory_tree(self.adir):
-            articles.append(Article(filepath))
-        return articles
+    def process_articles(self, ext=['.md']):
+        self.articles = []
+        for relpath in util.directory_tree(self.adir):
+            fullpath = os.path.join(self.adir, relpath)
+
+            opath = os.path.join(self.odir, relpath)
+            util.check_dir(opath)
+
+            if pathlib.Path(relpath).suffix in ext:
+                self.articles.append(Article(fullpath, relpath))
+            else:
+                shutil.copy2(fullpath, opath)

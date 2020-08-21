@@ -1,0 +1,35 @@
+{% extends "page.html" %}
+
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet" type="text/css" href="/static/css/article.css">
+{% endblock %}
+
+{% block main %}
+    <h1>Feed</h1>
+    <p><i>This page lists a frequently updated collection of sources I've encountered and deemed valuable. Each page includes a title that links to the original source, along with any notes I've taken during reading. If you'd like to hook this feed up somewhere, use this RSS link.</i></p><br>
+    <!-- single container element -> tag on same line -->
+    <ol id="post-list" style="columns:2; column-gap:6em">
+        {% for article in articles_page.object_list %}
+           {% if article.system %}
+               {% if article.system == 'feed' %}
+                    <li><article>
+                        <header><span>
+                            <a href="{{ SITEURL }}/{{ article.url }}" rel="bookmark" title="Permalink to {{ article.title|striptags }}">{{ article.title }}</a>
+                        {% if article.summary %}
+                            <span><i class='grey'>- {{ article.summary|striptags }}</i></span>
+                        {% endif %}
+                        </span></header>
+                        <!--<footer>
+                            <time class="published" datetime="{{ article.date.isoformat() }}"> {{ article.locale_date }} </time>
+                        </footer>-->
+                    </article></li>
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+    </ol>
+
+    {% if articles_page.has_other_pages() %}
+        {% include 'pagination.html' %}
+    {% endif %}
+{% endblock main %}

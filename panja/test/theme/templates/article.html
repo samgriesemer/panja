@@ -1,0 +1,102 @@
+{% extends "page.html" %}
+
+{# delayed from base to use `article` object #}
+{% block title %}
+    {{ article.title }} - samgriesemer
+{% endblock %}
+
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="/static/css/article.css">
+
+    <!-- load only to handle math formatting in TOC, all other math rendered on the server side -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js" integrity="sha384-y23I5Q6l+B6vatafAwxRu/0oK/79VlbSz7Q9aiSZUvyWYIYsd+qj+o24G5ZU2zJz" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js" integrity="sha384-kWPLUVMOks5AQFrykwIup5lo0m3iMkkHrD0uJ4H5cjeGihAutqP0yW0J6dpFiVkI" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+{% endblock %}
+
+{# additional meta tags #}
+{% block meta %}
+		{{ super() }}
+    {% if article.description %}
+        <meta name="description" content="{{ article.description }}" />
+    {% endif %}
+    {% for tag in article.tags %}
+        <meta name="tags" content="{{ tag }}" />
+    {% endfor %}
+{% endblock %}
+
+{# write main page content as single article #}
+{% block main %}
+    {# primary article, contains all components needed for standalone article #}
+    <article>
+        {# title and metadata heading the article (may consider metadata out of header at some point) #}
+        <header>
+            {% if article.source %}
+                <a href={{ article.source }}><h1>{{ article.title }}</h1></a>
+            {% else %}
+                <h1>{{ article.title }}</h1>
+            {% endif %}
+
+            {% if article.summary %}
+                <i>{{ article.summary }}</i>
+            {% endif %}
+
+            <section id='metadata'>
+                <span>
+                    Created:
+                    <time class="published" datetime="{{ article.created }}">
+                        {{ article.created }}
+                    </time>
+                </span><br>
+
+                {% if article.modified %}
+                <span>
+                    Modified:
+                    <time class="modified" datetime="{{ article.modified }}">
+                        {{ article.modified }}
+                    </time>
+                </span>
+                {% endif %}
+
+                {# dont need authors for now 
+                {% if article.authors %}
+                <address class="vcard author">
+                  By {% for author in article.authors %}
+                      <a class="url fn" href="{{ SITEURL }}/{{ author.url }}">{{ author }}</a>
+                    {% endfor %}
+                </address>
+                {% endif %}
+                #}
+                
+                {# deprecating categories, only need tags
+                {% if article.category %}
+                <div class="category">
+                    Category: <a href="{{ SITEURL }}/{{ article.category.url }}">{{ article.category }}</a>
+                </div>
+                {% endif %}
+                #}
+
+                {% if article.tags %}
+                <div class="tags">
+                    Tags:
+                    {% for tag in article.tags %}
+                        <a href="tag/{{ tag }}">{{ tag }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </section>
+        </header>
+
+        {# article content, specifically headings, paragraphs, figures, etc for content only #}
+        <section id='content'>
+            {{ article.html }}
+        </section>
+
+        {# article footer details #}
+        <footer>
+            <!--<p>Article footer</p>-->
+        </footer>
+    </article>
+{% endblock %}

@@ -1,0 +1,143 @@
+/* font imports */
+@font-face { 
+  font-family: 'Akkurat-mono';
+  src: url('/static/font/akkurat-mono/akkurat-mono.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'Akkurat';
+  src: url('/static/font/akkurat/akkurat.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'Akkurat';
+  src: url('/static/font/akkurat/akkurat-bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'Akkurat';
+  src: url('/static/font/akkurat/akkurat-italic.ttf') format('truetype');
+  font-weight: normal;
+  font-style: italic;
+}
+
+@font-face { 
+  font-family: 'Palatino';
+  src: url('/static/font/palatino/PalatinoLTStd-Roman.otf');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'Palatino';
+  src: url('/static/font/palatino/PalatinoLTStd-Italic.otf');
+  font-weight: normal;
+  font-style: italic;
+}
+
+@font-face { 
+  font-family: 'Palatino';
+  src: url('/static/font/palatino/PalatinoLTStd-Bold.otf');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'Palatino';
+  src: url('/static/font/palatino/PalatinoLTStd-BoldItalic.otf');
+  font-weight: bold;
+  font-style: italic;
+}
+
+@font-face { 
+  font-family: 'Gyre';
+  src: url('/static/font/palladio/texgyrepagella-regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'Gyre';
+  src: url('/static/font/palladio/texgyrepagella-bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+/*
+@font-face { 
+  font-family: 'Akkurat';
+  src: url('/static/font/akkurat/akkurat-light.ttf') format('truetype');
+  font-weight: lighter;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'Noe-Display';
+  src: url('/static/font/noe-display/noe-display-regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'Noe-Display';
+  src: url('/static/font/noe-display/noe-display-bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}*/
+
+/* font imports */
+@font-face { 
+  font-family: 'SCP';
+  src: url('/static/font/scp/SourceCodePro-Regular.ttf.woff2') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'SSP';
+  src: url('/static/font/ssp/ssp-reg.woff2') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'SSP';
+  src: url('/static/font/ssp/ssp-reg-it.woff2') format('truetype');
+  font-weight: normal;
+  font-style: italic;
+}
+
+@font-face { 
+  font-family: 'SSP';
+  src: url('/static/font/ssp/ssp-bold.woff2') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'SSP';
+  src: url('/static/font/ssp/ssp-bold-it.woff2') format('truetype');
+  font-weight: bold;
+  font-style: italic;
+}
+
+@font-face { 
+  font-family: 'SSP';
+  src: url('/static/font/ssp/ssp-semibold.woff2') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face { 
+  font-family: 'SSP';
+  src: url('/static/font/ssp/ssp-semibold-it.woff2') format('truetype');
+  font-weight: 500;
+  font-style: italic;
+}
+
