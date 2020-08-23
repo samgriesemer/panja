@@ -108,7 +108,6 @@ class Panja:
             util.check_dir(opath)
 
             if pathlib.Path(relpath).suffix in ext:
-                print(relpath)
                 self.articles.append(Article(fullpath, relpath))
             else:
                 shutil.copy2(fullpath, opath)
