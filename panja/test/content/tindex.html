@@ -1,11 +1,11 @@
 {% extends "page.html" %} 
-{# set new nav items #}
+{# set new nav items
 {% set MENUITEMS = (
     ('ABOUT', '/about'),
     ('FEED', '/feed'),
     ('BLOG', '/blog'),
     ('WIKI', '/wiki')
-) %}
+    ) %}#}
 
 {% block styles %}
     {{ super() }}
@@ -20,13 +20,13 @@
         <h1><a href='blog' class='nostyle'>Blog</a></h1><hr class='solid'>
         <ol id="post-list">
             {% set count = namespace(value=0) %}
-            {% for article in articles %}
+            {% for article in article_list %}
                 {% if article.type %}
                     {% if article.type == 'blog' %}
                         {% if count.value < 6 %}
                         <li><article>
                             <header><span>
-                                <a href="{{ SITEURL }}/{{ article.url }}" rel="bookmark" title="Permalink to {{ article.title|striptags }}">{{ article.title }}</a>
+                                <a href="{{ article.url }}" rel="bookmark" title="Permalink to {{ article.title|striptags }}">{{ article.title }}</a>
                                 {% if article.summary %}
                                     <span><i class='grey'>- {{ article.summary|striptags }}</i></span>
                                 {% endif %}
@@ -41,15 +41,18 @@
     </div>
     <div>
         <h1><a href='wiki' class='nostyle'>Wiki</a></h1><hr class='solid'>
+        {% if article_list %}
+            <p>hello plz</p>
+        {% endif %}
         <ol id="post-list">
             {% set count = namespace(value=0) %}
-            {% for article in articles %}
+            {% for article in article_list %}
                 {% if article.type %}
                     {% if article.type == 'wiki' %}
                         {% if count.value < 6 %}
                         <li><article>
                             <header><span>
-                                <a href="{{ SITEURL }}/{{ article.url }}" rel="bookmark" title="Permalink to {{ article.title|striptags }}">{{ article.title }}</a>
+                                <a href="{{ article.url }}" rel="bookmark" title="Permalink to {{ article.title|striptags }}">{{ article.title }}</a>
                                 {% if article.summary %}
                                     <span><i class='grey'>- {{ article.summary|striptags }}</i></span>
                                 {% endif %}
@@ -68,13 +71,13 @@
         <h1><a href='feed' class='nostyle'>Feed</a></h1><hr class='solid'>
         <ol id="post-list">
             {% set count = namespace(value=0) %}
-            {% for article in articles %}
+            {% for article in article_list %}
                 {% if article.type %}
                     {% if article.type == 'feed' %}
                         {% if count.value < 6 %}
                         <li><article>
                             <header><span>
-                                <a href="{{ SITEURL }}/{{ article.url }}" rel="bookmark" title="Permalink to {{ article.title|striptags }}">{{ article.title }}</a>
+                                <a href="{{ article.url }}" rel="bookmark" title="Permalink to {{ article.title|striptags }}">{{ article.title }}</a>
                                 {% if article.summary %}
                                     <span><i class='grey'>- {{ article.summary|striptags }}</i></span>
                                 {% endif %}

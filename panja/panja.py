@@ -1,6 +1,7 @@
 import os
 import shutil
 import pathlib
+from tqdm import tqdm
 from jinja2 import FileSystemLoader, Environment
 
 import util
@@ -76,6 +77,7 @@ class Panja:
             opath = os.path.join(self.odir, filepath)
             util.check_dir(opath)
             if pathlib.Path(filepath).suffix in ext:
+                print(filepath)
                 template = env.get_template(filepath)
                 template.stream(self.global_context).dump(opath)
             else:
@@ -99,13 +101,14 @@ class Panja:
 
     def process_articles(self, ext=['.md']):
         self.articles = []
-        for relpath in util.directory_tree(self.adir):
+        for relpath in tqdm(util.directory_tree(self.adir)):
             fullpath = os.path.join(self.adir, relpath)
 
             opath = os.path.join(self.odir, relpath)
             util.check_dir(opath)
 
             if pathlib.Path(relpath).suffix in ext:
+                print(relpath)
                 self.articles.append(Article(fullpath, relpath))
             else:
                 shutil.copy2(fullpath, opath)

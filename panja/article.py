@@ -12,6 +12,7 @@ class Article:
     def __init__(self, fullpath, relpath, local=False):
         self.fullpath = fullpath
         self.relpath = relpath
+        self.url = '.'.join(relpath.split('.')[:-1])
         self.metadata = {}
         self.content = ''
         self.html = ''
@@ -24,7 +25,8 @@ class Article:
         if not local and (self.metadata.get('type') == 'journal' or
                           self.metadata.get('visibility') == 'private'):
             self.valid = False
-            return
+
+        if not self.valid: return
 
         self.transform_links()
         self.process_backlinks()
@@ -34,11 +36,17 @@ class Article:
         with open(self.fullpath, 'r') as f:
             ft = f.read()
             mt = re.match('---\n(.*?)\n---', ft, flags=re.DOTALL)
+
+            if mt is None:
+                self.valid = False
+                print(self.relpath + ' has invalid metadata')
+                return
             
             metadata = {}
             for line in mt.group(1).split('\n'):
-                attr, val = map(str.strip, line.split(':'))
-                metadata[attr] = val
+                split = [line.split(':')[0], ':'.join(line.split(':')[1:])]
+                attr, val = map(str.strip, split)
+                metadata[attr.lower()] = val
 
         self.metadata = metadata
 
@@ -69,8 +77,8 @@ class Article:
         self.html = pp.convert_text(self.content,
                                     to='html5',
                                     format='md',
-                                    extra_args=pdoc_args,
-                                    filters=filters)
+                                    extra_args=pdoc_args)
+                                    #filters=filters)
 
     def title_to_link(self, match):
         '''Return Markdown-style link from file title'''
