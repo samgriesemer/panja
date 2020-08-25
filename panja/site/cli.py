@@ -19,7 +19,7 @@ Options:
 from __future__ import print_function
 from docopt import docopt
 import os
-from staticjinja import Site
+from panja import Site
 import sys
 
 
