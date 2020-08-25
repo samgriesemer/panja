@@ -80,6 +80,7 @@ class Panja:
                 print(filepath)
                 template = env.get_template(filepath)
                 template.stream(self.global_context).dump(opath)
+            elif re.match(fi
             else:
                 util.copy_file(os.path.join(self.cdir, filepath), opath)
 
