@@ -91,8 +91,6 @@ class Site(object):
         self.logger = logger
         self.contexts = contexts or []
         self.rules = rules or []
-        if staticpaths:
-            warnings.warn("staticpaths are deprecated. Use Make instead.")
         self.staticpaths = staticpaths or []
         self.basepath = basepath
         self.mergecontexts = mergecontexts
@@ -191,7 +189,6 @@ class Site(object):
         """
         # TODO: Determine if there is a better way to write do this
         calling_module = inspect.getmodule(inspect.stack()[-1][0])
-        # Absolute path to project
         project_path = os.path.realpath(os.path.dirname(
             calling_module.__file__))
 
@@ -428,7 +425,7 @@ class Site(object):
                         path".format(f))
 
             output_location = os.path.join(self.outpath, f)
-            self.logger.info("Copying %s to %s." % (f, output_location))
+            self.logger.info("Copying %s to output." % f)
             self._ensure_dir(f)
             shutil.copy2(input_location, output_location)
 

@@ -1,5 +1,6 @@
 import os
 import shutil
+import re
 
 def copy_file(ipath, opath):
     shutil.copy2(ipath, opath)
@@ -17,3 +18,12 @@ def check_dir(path):
     outdir = os.path.dirname(path)
     if not os.path.exists(outdir):
         os.makedirs(outdir)
+
+def title_to_fname(title):
+    title = re.sub(r' *\n *', ' ', title)
+    return title.replace(' ', '_')
+
+def title_to_link(match):
+    '''Return Markdown-style link from file title'''
+    title = match.group(1)
+    return '['+title+']('+title_to_fname(title)+')'

@@ -1,5 +1,9 @@
 import re
+import os
+import inspect
 import pypandoc as pp
+
+from ..utils import util
 
 class Article:
     '''
@@ -9,12 +13,12 @@ class Article:
     links), and converting the resulting text to HTML. This class is admittedly
     a bit sloppy and specific to my own needs at the moment.
     '''
-    def __init__(self, fullpath, relpath, local=False):
+    def __init__(self, fullpath, name, basepath, local=False):
         self.fullpath = fullpath
-        self.relpath = relpath
-        self.url = '.'.join(relpath.split('.')[:-1])
+        self.basepath = basepath
+        self.name = name
+        self.url = name
         self.metadata = {}
-        self.content = ''
         self.html = ''
         self.valid = True
 
@@ -26,12 +30,8 @@ class Article:
                           self.metadata.get('visibility') == 'private'):
             self.valid = False
 
-        if not self.valid: return
-
-    def prepare(self):
-        self.transform_links()
-        self.process_backlinks()
-        self.convert_html()
+        with open(self.fullpath, 'r') as f:
+            self.content = f.read()
 
     def process_metadata(self):
         with open(self.fullpath, 'r') as f:
@@ -40,7 +40,7 @@ class Article:
 
             if mt is None:
                 self.valid = False
-                print(self.relpath + ' has invalid metadata')
+                print(self.name + ' has invalid metadata')
                 return
             
             metadata = {}
@@ -52,37 +52,29 @@ class Article:
         self.metadata = metadata
 
     def transform_links(self):
-        with open(self.fullpath, 'r+') as f:
-            ft = f.read()
-            nt = re.sub(
-                pattern=r'\[\[([^\]]*)\]\]',
-                repl=self.title_to_link,
-                string=ft
-            )
-            self.content = nt
-
-    def process_backlinks(self):
-        pass
+        nt = re.sub(
+            pattern=r'\[\[([^\]`]*)\]\]',
+            repl=util.title_to_link,
+            string=self.content
+        )
+        self.content = nt
 
     def convert_html(self):
-        filters = ['./node-pandoc-katex/pandoc-katex.js']
+        filters = [self.basepath+'/pandoc/filters/node-pandoc-katex/pandoc-katex.js']
         pdoc_args = [
             '--section-divs',
-            '--template=blank_template.html'
+            '--template={}/pandoc/blank_template.html'.format(self.basepath)
         ]
        
         # conditional args
         if self.metadata.get('toc') != 'false':
             pdoc_args.append('--toc')
 
+        self.transform_links()
         self.html = pp.convert_text(self.content,
                                     to='html5',
                                     format='md',
-                                    extra_args=pdoc_args)
-                                    #filters=filters)
+                                    extra_args=pdoc_args,
+                                    filters=filters)
 
-    def title_to_link(self, match):
-        '''Return Markdown-style link from file title'''
-        title = match.group(1)
-        return '['+title+']('+title.replace(' ', '_')+')'
 
