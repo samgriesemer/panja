@@ -13,6 +13,7 @@ import re
 import shutil
 import warnings
 
+from http.server import SimpleHTTPRequestHandler as shttp
 from jinja2 import Environment, FileSystemLoader
 
 from .reloader import Reloader
@@ -443,7 +444,7 @@ class Site(object):
         else:
             return []
 
-    def render(self, use_reloader=False):
+    def render(self, use_reloader=False, use_server=False):
         """Generate the site.
 
         :param use_reloader: if given, reload templates on modification
@@ -456,6 +457,13 @@ class Site(object):
                              self.searchpaths)
             self.logger.info("Press Ctrl+C to stop.")
             Reloader(self).watch()
+
+        if use_server:
+            port = 8000
+            http_server = lambda *args: shttp(*args, directory=self.outpath)
+            with socketserver.TCPServer(('', port), http_server) as httpd:
+                print('serving {} at port {}'.format(self.outpath, port)
+                httpd.serve_forever()
 
     def __repr__(self):
         return "%s('%s', '%s')" % (type(self).__name__,
