@@ -13,6 +13,12 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/samgriesemer/panja",
     packages=setuptools.find_packages(),
+    install_requires=[
+        'jinja2',
+        'pypandoc',
+        'tqdm',
+        'livereload'
+    ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
