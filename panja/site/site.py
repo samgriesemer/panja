@@ -13,8 +13,8 @@ import re
 import shutil
 import warnings
 
-from http.server import SimpleHTTPRequestHandler as shttp
 from jinja2 import Environment, FileSystemLoader
+from livereload import Server
 
 from .reloader import Reloader
 
@@ -444,7 +444,7 @@ class Site(object):
         else:
             return []
 
-    def render(self, use_reloader=False, use_server=False):
+    def render(self, reloader=False, server=False, liveport=False):
         """Generate the site.
 
         :param use_reloader: if given, reload templates on modification
@@ -452,22 +452,54 @@ class Site(object):
         self.render_templates(self.templates)
         self.copy_static(self.static_names)
 
-        if use_reloader:
+        server = Server()
+
+        if reloader:
             self.logger.info("Watching '%s' for changes..." %
                              self.searchpaths)
             self.logger.info("Press Ctrl+C to stop.")
-            Reloader(self).watch()
 
-        if use_server:
+            # add searchpaths to watch list, need to be globs
+            for searchpath in self.searchpaths:
+                server.watch(os.path.join(searchpath, '*'), self.watch_handler)
+
+        if server or liveport:
             port = 8000
-            http_server = lambda *args: shttp(*args, directory=self.outpath)
-            with socketserver.TCPServer(('', port), http_server) as httpd:
-                print('serving {} at port {}'.format(self.outpath, port)
-                httpd.serve_forever()
+            liveport = 35729
+            if not liveport:
+                server.serve(port=port, host='0.0.0.0', root=self.outpath)
+            else:
+                server.serve(port=port, host='0.0.0.0', root=self.outpath, liveport=liveport)
+
+    def watch_handler(self, files):
+        spaths = []
+        for f in files:
+            spath = None
+            for searchpath in self.searchpaths:
+                if f.startswith(searchpath):
+                    spath = searchpath
+                    break
+            spaths.append((f, spath))
+
+        for f, spath in spaths:
+            if spath is None:
+                raise Exception('Couldn\'t find overlapping search path \
+                                for file with path {}'.format(f))
+
+        for f, spath in spaths:
+            filename = os.path.relpath(f, spath)
+            if self.is_static(filename):
+                files = self.get_dependencies(filename)
+                self.copy_static(files)
+            else:
+                templates = self.get_dependencies(filename)
+                self.render_templates(templates)
+
 
     def __repr__(self):
         return "%s('%s', '%s')" % (type(self).__name__,
                                    self.searchpaths, self.outpath)
+
 
 
 class Renderer(Site):
@@ -487,3 +519,4 @@ def make_site(*args, **kwargs):
 def make_renderer(*args, **kwargs):
     warnings.warn("make_renderer was renamed to Site.make_site.")
     return make_site(*args, **kwargs)
+

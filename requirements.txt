@@ -1,4 +1,4 @@
 jinja2
 pypandoc
 tqdm
-watchdog
+livereload
