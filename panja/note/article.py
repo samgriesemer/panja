@@ -64,7 +64,7 @@ class Article:
         filters = [os.path.join(bpath, 'pandoc/filters/node-pandoc-katex/pandoc-katex.js')]
         pdoc_args = [
             '--section-divs',
-            '--template={}'.format(os.path.join(self.basepath, 'pandoc/blank_template.html')
+            '--template={}'.format(os.path.join(self.basepath, 'pandoc/blank_template.html'))
         ]
        
         # conditional args
