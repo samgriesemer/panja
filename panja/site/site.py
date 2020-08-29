@@ -16,8 +16,6 @@ import warnings
 from jinja2 import Environment, FileSystemLoader
 from livereload import Server
 
-from .reloader import Reloader
-
 
 def _has_argument(func):
     """Test whether a function expects an argument.
@@ -495,28 +493,8 @@ class Site(object):
                 templates = self.get_dependencies(filename)
                 self.render_templates(templates)
 
-
     def __repr__(self):
         return "%s('%s', '%s')" % (type(self).__name__,
                                    self.searchpaths, self.outpath)
 
-
-
-class Renderer(Site):
-    def __init__(self, *args, **kwargs):
-        warnings.warn("Renderer was renamed to Site.")
-        super(Renderer, Site).__init__(*args, **kwargs)
-
-    def run(self, use_reloader=False):
-        return self.render(use_reloader)
-
-
-def make_site(*args, **kwargs):
-    warnings.warn("make_site was renamed to Site.make_site.")
-    return Site.make_site(*args, **kwargs)
-
-
-def make_renderer(*args, **kwargs):
-    warnings.warn("make_renderer was renamed to Site.make_site.")
-    return make_site(*args, **kwargs)
 
