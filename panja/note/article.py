@@ -60,10 +60,11 @@ class Article:
         self.content = nt
 
     def convert_html(self):
-        filters = [self.basepath+'/pandoc/filters/node-pandoc-katex/pandoc-katex.js']
+        bpath = os.path.join('./', self.basepath)
+        filters = [os.path.join(bpath, 'pandoc/filters/node-pandoc-katex/pandoc-katex.js')]
         pdoc_args = [
             '--section-divs',
-            '--template={}/pandoc/blank_template.html'.format(self.basepath)
+            '--template={}'.format(os.path.join(self.basepath, 'pandoc/blank_template.html')
         ]
        
         # conditional args
