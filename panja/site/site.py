@@ -442,16 +442,16 @@ class Site(object):
         else:
             return []
 
-    def render(self, reloader=False, server=False, liveport=False):
+    def render(self, build=True, reloader=False, server=False, liveport=False):
         """Generate the site.
 
         :param use_reloader: if given, reload templates on modification
         """
-        self.render_templates(self.templates)
-        self.copy_static(self.static_names)
+        if build:
+            self.render_templates(self.templates)
+            self.copy_static(self.static_names)
 
         server = Server()
-
         if reloader:
             self.logger.info("Watching '%s' for changes..." %
                              self.searchpaths)
