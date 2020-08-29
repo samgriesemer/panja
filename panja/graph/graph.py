@@ -13,7 +13,7 @@ class Graph:
             basepath = os.getcwd()
         else:
             if not os.path.isabs(basepath):
-                basepath = os.path.join(os.getcrd(), basepath)
+                basepath = os.path.join(os.getcwd(), basepath)
 
         self.notepath = notepath
         self.basepath = basepath
