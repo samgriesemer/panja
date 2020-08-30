@@ -466,6 +466,15 @@ class Site(object):
         AND `server; both of the former options require the later implicitly. However,
         this is not true the other way around, and both `reloader` and `liveport` are
         independent of each other.
+
+        Note also that, for the `reloader` option, the default `livereload` library server
+        instance is used, _which happens to use a livereload server along with it_. This
+        means that, when specifying just the `reloader` option without `server`, you will
+        get both a search path watcher/reloader _and_ and livereload server. As a result,
+        specifying both `reloader` and `liveport` is redundant, but specifying `reloader`
+        and `server` will ensure a more vanilla static server _without_ livereload is
+        used. This is pretty confusing, so I should probably rethink this (although it
+        requires me to add _more_ logic instead of taking it away).
         """
         if build:
             self.render_templates(self.templates)
