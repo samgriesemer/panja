@@ -442,16 +442,38 @@ class Site(object):
         else:
             return []
 
-    def render(self, build=True, reloader=False, server=False, liveport=False):
-        """Generate the site.
+    def render(self, build=True, server=False, reloader=False, liveport=False):
+        """Generate the site. A number of options may be specified to control the behavior
+        of site's build process and downstream access to output files. 
 
-        :param use_reloader: if given, reload templates on modification
+        :param build:    Build the site, rendering the files from search paths to the
+                         output path. Default = True
+        :param server:   Serve the files using a simple HTTP request handler. Does nothing
+                         more than sit on top of the output path and serve those file.
+        :param reloader: Watch and reload files that change in the search paths. These
+                         changed files will be reprocessed according the compilation rules
+                         of the site object.
+        :param liveport: Start a livereload server, which automatically reloads a browser
+                         tab (which is current accessing the site files) when a file
+                         changes in the output directory. Unless you plan to modify the
+                         files that are in the output path directly, this option should
+                         almost always be paired with `--reloader` to ensure changes to
+                         the unprocessed files get processed, pushed to the output
+                         directory, and liveport recognizes the change.
+
+        Note that these options can and should be used together in many cases. Note that
+        some combinations are redundant, namely specifying either `reloader` or `liveport`
+        AND `server; both of the former options require the later implicitly. However,
+        this is not true the other way around, and both `reloader` and `liveport` are
+        independent of each other.
         """
         if build:
             self.render_templates(self.templates)
             self.copy_static(self.static_names)
+        
+        if server or reloader or liveport:
+            server = Server()
 
-        server = Server()
         if reloader:
             self.logger.info("Watching '%s' for changes..." %
                              self.searchpaths)
