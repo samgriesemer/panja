@@ -17,7 +17,8 @@ setuptools.setup(
         'jinja2',
         'pypandoc',
         'tqdm',
-        'livereload'
+        'livereload',
+        'docopt'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
