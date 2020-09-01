@@ -490,7 +490,7 @@ class Site(object):
 
             # add searchpaths to watch list, need to be globs
             for searchpath in self.searchpaths:
-                server.watch(os.path.join(searchpath, '*'), self.watch_handler)
+                server.watch(os.path.join(searchpath, '**'), self.watch_handler)
 
         if server or liveport:
             port = 8000
