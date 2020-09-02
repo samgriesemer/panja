@@ -2,6 +2,7 @@ import re
 import os
 import inspect
 import pypandoc as pp
+from colorama import Fore
 
 from ..utils import util
 
@@ -40,7 +41,7 @@ class Article:
 
             if mt is None:
                 self.valid = False
-                print(self.name + ' has invalid metadata')
+                print(Fore.RED + '[invalid metadata] ' + Fore.RESET + self.name)
                 return
             
             metadata = {}

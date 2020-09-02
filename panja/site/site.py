@@ -12,6 +12,7 @@ import os
 import re
 import shutil
 import warnings
+from colorama import Fore
 
 from jinja2 import Environment, FileSystemLoader
 from livereload import Server
@@ -484,8 +485,9 @@ class Site(object):
             server = Server()
 
         if reloader:
-            self.logger.info("Watching '%s' for changes..." %
-                             self.searchpaths)
+            self.logger.info("Watching search paths: \n\t{}".format(
+                Fore.BLUE+'\n\t'.join(self.searchpaths)+Fore.RESET))
+
             self.logger.info("Press Ctrl+C to stop.")
 
             # add searchpaths to watch list, need to be globs

@@ -18,7 +18,8 @@ setuptools.setup(
         'pypandoc',
         'tqdm',
         'livereload',
-        'docopt'
+        'docopt',
+        'colorama'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
