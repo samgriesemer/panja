@@ -1,3 +1,6 @@
+# Panja
+[![build status](https://circleci.com/gh/samgriesemer/panja.svg?style=shield)](https://circleci.com/gh/samgriesemer/panja)
+
 **Note**: At the moment, this repo and README are mostly for myself. While the main
 site-building core is rather general, the surrounding utilities in this repository are
 mostly customized for my use case, which is building a static site from Jinja templates
