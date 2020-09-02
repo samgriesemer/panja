@@ -1,11 +1,11 @@
 version: 2.1
 jobs:
   build:
-    working_directory: ~/panja
     docker:
       - image: circleci/python:3.8.5
     steps:
       - checkout
+          path: ~/panja
       - run:
           name: Install Python package in a venv
           command: |
