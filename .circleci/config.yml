@@ -4,7 +4,8 @@ jobs:
     docker:
       - image: circleci/python:3.8.5
     steps:
-      - checkout
+      - checkout:
+          path: panja
       - run:
           name: Install Python package in a venv
           command: |
