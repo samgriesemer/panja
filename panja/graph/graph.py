@@ -70,7 +70,7 @@ class Graph:
     def process_links(self, article):
         links = re.findall(
             pattern=r'\[\[([^\]`]*)\]\]',
-            string=article.content
+            string=article.metadata['content']
         )
 
         aname = article.name

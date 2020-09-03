@@ -14,7 +14,8 @@ import shutil
 import warnings
 from colorama import Fore
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, Template
+from jinja2.exceptions import TemplateSyntaxError
 from livereload import Server
 
 
@@ -256,6 +257,14 @@ class Site(object):
             return self.env.get_template(template_name)
         except UnicodeDecodeError as e:
             raise UnicodeError('Unable to decode %s: %s' % (template_name, e))
+        except TemplateSyntaxError as e:
+            if template_name.split('.')[-1] == 'md':
+                print(Fore.RED + 'jinja doesn\'t like syntax in {}, ignoring'.format(template_name) + Fore.RESET)
+                template = Template('')
+                template.name = template_name
+                template.filename = self.find_searchpath(template_name)
+                return template
+            raise TemplateSyntaxError
 
     def get_context(self, template):
         """Get the context for a template.
@@ -409,16 +418,17 @@ class Site(object):
         for template in templates:
             self.render_template(template, filepath)
 
+    def find_searchpath(self, name):
+        for searchpath in self.searchpaths:
+            fpath = os.path.join(searchpath, name)
+            if os.path.isfile(fpath):
+                return fpath
+        return None
+
     def copy_static(self, files):
         for f in files:
-            input_location = None
-
             # find associated search path for static file
-            for searchpath in self.searchpaths:
-                fpath = os.path.join(searchpath, f)
-                if os.path.isfile(fpath):
-                    input_location = fpath
-                    break
+            input_location = self.find_searchpath(f)
 
             if input_location is None:
                 raise Exception("Static file {} has no matching search \
@@ -511,7 +521,7 @@ class Site(object):
                     spath = searchpath
                     break
             spaths.append((f, spath))
-
+            
         for f, spath in spaths:
             if spath is None:
                 raise Exception('Couldn\'t find overlapping search path \

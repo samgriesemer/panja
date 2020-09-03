@@ -22,6 +22,7 @@ class Article:
         self.metadata = {}
         self.html = ''
         self.valid = True
+        self.metamd = ['summary']
 
         self.process_metadata()
         self.__dict__.update(self.metadata)
@@ -30,9 +31,6 @@ class Article:
         if not local and (self.metadata.get('type') == 'journal' or
                           self.metadata.get('visibility') == 'private'):
             self.valid = False
-
-        with open(self.fullpath, 'r') as f:
-            self.content = f.read()
 
     def process_metadata(self):
         with open(self.fullpath, 'r') as f:
@@ -50,15 +48,16 @@ class Article:
                 attr, val = map(str.strip, split)
                 metadata[attr.lower()] = val
 
+            metadata['content'] = ft
         self.metadata = metadata
 
     def transform_links(self):
         nt = re.sub(
             pattern=r'\[\[([^\]`]*)\]\]',
             repl=util.title_to_link,
-            string=self.content
+            string=self.metadata['content']
         )
-        self.content = nt
+        self.metadata['content'] = nt
 
     def convert_html(self):
         bpath = os.path.join('./', self.basepath)
@@ -73,10 +72,22 @@ class Article:
             pdoc_args.append('--toc')
 
         self.transform_links()
-        self.html = pp.convert_text(self.content,
-                                    to='html5',
-                                    format='md',
-                                    extra_args=pdoc_args,
-                                    filters=filters)
+
+        self.html = {}
+        self.html.update(self.metadata)
+
+        self.html['content'] = pp.convert_text(self.metadata['content'],
+                                               to='html5',
+                                               format='md',
+                                               extra_args=pdoc_args,
+                                               filters=filters)
+
+        # render extra metadata components to HTML
+        for key in self.metamd:
+            if key in self.metadata:
+                self.html[key] = pp.convert_text(self.metadata[key],
+                                                 to='html5',
+                                                 format='md',
+                                                 filters=filters)
 
 
