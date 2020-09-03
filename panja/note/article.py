@@ -48,16 +48,16 @@ class Article:
                 attr, val = map(str.strip, split)
                 metadata[attr.lower()] = val
 
-            metadata['content'] = ft
+            self.content = ft
         self.metadata = metadata
 
-    def transform_links(self):
+    def transform_links(self, string):
         nt = re.sub(
             pattern=r'\[\[([^\]`]*)\]\]',
             repl=util.title_to_link,
-            string=self.metadata['content']
+            string=string
         )
-        self.metadata['content'] = nt
+        return nt
 
     def convert_html(self):
         bpath = os.path.join('./', self.basepath)
@@ -71,12 +71,11 @@ class Article:
         if self.metadata.get('toc') != 'false':
             pdoc_args.append('--toc')
 
-        self.transform_links()
-
         self.html = {}
         self.html.update(self.metadata)
 
-        self.html['content'] = pp.convert_text(self.metadata['content'],
+        content = self.transform_links(self.content)
+        self.html['content'] = pp.convert_text(content,
                                                to='html5',
                                                format='md',
                                                extra_args=pdoc_args,
@@ -85,7 +84,8 @@ class Article:
         # render extra metadata components to HTML
         for key in self.metamd:
             if key in self.metadata:
-                self.html[key] = pp.convert_text(self.metadata[key],
+                value = self.transform_links(self.metadata[key])
+                self.html[key] = pp.convert_text(value,
                                                  to='html5',
                                                  format='md',
                                                  filters=filters)
