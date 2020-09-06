@@ -317,6 +317,10 @@ class Site(object):
         :param filename: the name of the file to check
 
         """
+        if self.is_partial(filename):
+            return False
+        if self.is_ignored(filename):
+            return False
         return any(filename.startswith(path) for path in self.staticpaths)
 
     def is_partial(self, filename):
@@ -339,6 +343,7 @@ class Site(object):
 
         :param filename: the name of the file to check
         """
+        #print(filename, any((x.startswith(".") for x in filename.split(os.path.sep))))
         return any((x.startswith(".") for x in filename.split(os.path.sep)))
 
     def is_template(self, filename):
