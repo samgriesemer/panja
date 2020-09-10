@@ -44,7 +44,7 @@ class Graph:
             article = self.article_map[aname]
             data = {
                 'name': article.name,
-                'url': article.url,
+                'link': article.link,
                 'valid': article.valid
             }
             data.update(article.metadata)
@@ -66,7 +66,7 @@ class Graph:
         article = self.article_map[name]
         data = {
             'name': article.name,
-            'url': article.url,
+            'link': article.link,
             'valid': article.valid
         }
         data.update(article.metadata)
@@ -80,7 +80,7 @@ class Graph:
             if target.name not in node_track:
                 data = {
                     'name': target.name,
-                    'url': target.url,
+                    'link': target.link,
                     'valid': target.valid
                 }
                 data.update(target.metadata)
@@ -99,7 +99,7 @@ class Graph:
             if target.name not in node_track:
                 data = {
                     'name': target.name,
-                    'url': target.url,
+                    'link': target.link,
                     'valid': target.valid
                 }
                 data.update(target.metadata)

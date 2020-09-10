@@ -18,7 +18,7 @@ class Article:
         self.fullpath = fullpath
         self.basepath = basepath
         self.name = name
-        self.url = name
+        self.link = name
         self.metadata = {}
         self.html = ''
         self.valid = True
