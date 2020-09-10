@@ -3,12 +3,13 @@ import inspect
 import re
 import json
 from collections import defaultdict
+from tqdm import tqdm
 
 from ..note.article import Article
 from ..utils import util
 
 class Graph:
-    def __init__(self, notepath, basepath=None, local=False):
+    def __init__(self, notepath, basepath=None, local=False, html=False):
         # update basepath if not supplied or relative
         if basepath is None:
             basepath = os.getcwd()
@@ -22,14 +23,18 @@ class Graph:
         self.article_map = {}
         self.lgraph = defaultdict(dict)
         self.bgraph = defaultdict(dict)
+        self.init_tracker = set()
 
         # alt graph management
 
-        for note in util.directory_tree(notepath):
+        for note in tqdm(util.directory_tree(notepath)):
             fullpath = os.path.join(notepath, note)
             name = '.'.join(note.split('.')[:-1])
             if note.split('.')[-1] == 'md':
-                self.add_article(fullpath, name)
+                article = self.add_article(fullpath, name)
+                if html and article.valid:
+                    article.convert_html() 
+                    self.init_tracker.add(name)
 
     def get_article_list(self):
         return list(self.article_map.values())

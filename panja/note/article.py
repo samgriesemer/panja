@@ -21,6 +21,7 @@ class Article:
         self.link = name
         self.metadata = {}
         self.html = ''
+        self.content = ''
         self.valid = True
         self.metamd = ['summary']
 
@@ -36,6 +37,7 @@ class Article:
         with open(self.fullpath, 'r') as f:
             ft = f.read()
             mt = re.match('---\n(.*?)\n---', ft, flags=re.DOTALL)
+            self.content = ft
 
             if mt is None:
                 self.valid = False
@@ -48,7 +50,6 @@ class Article:
                 attr, val = map(str.strip, split)
                 metadata[attr.lower()] = val
 
-            self.content = ft
         self.metadata = metadata
 
     def transform_links(self, string):
