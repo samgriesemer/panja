@@ -119,8 +119,8 @@ class Graph:
 
         return {'nodes': nodes, 'links': edges}
 
-    def add_article(self, fullpath, name):
-        article = Article(fullpath, name, self.basepath, self.local)
+    def add_article(self, fullpath, name, verbose=False):
+        article = Article(fullpath, name, self.basepath, self.local, verbose)
         if article.valid:
             self.article_map[name] = article
             self.process_links(article)

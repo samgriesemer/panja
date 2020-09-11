@@ -14,7 +14,7 @@ class Article:
     links), and converting the resulting text to HTML. This class is admittedly
     a bit sloppy and specific to my own needs at the moment.
     '''
-    def __init__(self, fullpath, name, basepath, local=False):
+    def __init__(self, fullpath, name, basepath, local=False, verbose=False):
         self.fullpath = fullpath
         self.basepath = basepath
         self.name = name
@@ -23,6 +23,7 @@ class Article:
         self.html = ''
         self.content = ''
         self.valid = True
+        self.verbose = verbose
         self.metamd = ['summary']
 
         self.process_metadata()
@@ -41,7 +42,8 @@ class Article:
 
             if mt is None:
                 self.valid = False
-                print(Fore.RED + '[invalid metadata] ' + Fore.RESET + self.name)
+                if self.verbose:
+                    print(Fore.RED + '[invalid metadata] ' + Fore.RESET + self.name)
                 return
             
             metadata = {}
