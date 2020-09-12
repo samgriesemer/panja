@@ -44,18 +44,26 @@ class Graph:
 
     def get_link_graph_edge_list(self):
         nodes = []
+        nodes_hook = defaultdict(dict)
         edges = []
         for aname, links in self.lgraph.items():
             article = self.article_map[aname]
             data = {
                 'name': article.name,
                 'link': article.link,
-                'valid': article.valid
+                'valid': article.valid,
+                'num_links': 0
             }
             data.update(article.metadata)
-            nodes.append(data) 
+            data.update(nodes_hook[aname])
+            nodes.append(data)
             for target, val in links.items():
                 if target in self.article_map:
+                    nodes_hook[aname]['num_links'] += val
+                    if nodes_hook[target].get('num_links') is None:
+                        nodes_hook[target]['num_links'] = val
+                    else: 
+                        nodes_hook[target]['num_links'] += val
                     edges.append({
                         'source': aname,
                         'target': target,
