@@ -47,7 +47,7 @@ links
 
 # Setup/installation
 Panja can be installed by first cloning this repo into the desired working directory.
-Then create a Python virtual environment:
+Then create a Python virtual environment (if desired):
 
 ```
 python3 -m venv panja_env
