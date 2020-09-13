@@ -46,7 +46,7 @@ class Graph:
         nodes = []
         nodes_hook = defaultdict(dict)
         edges = []
-        for aname, links in self.lgraph.items():
+        for aname, _ in self.lgraph.items():
             article = self.article_map[aname]
             data = {
                 'name': article.name,
@@ -55,15 +55,14 @@ class Graph:
                 'num_links': 0
             }
             data.update(article.metadata)
-            data.update(nodes_hook[aname])
+            nodes_hook[aname] = data
             nodes.append(data)
+
+        for aname, links in self.lgraph.items():
             for target, val in links.items():
                 if target in self.article_map:
                     nodes_hook[aname]['num_links'] += val
-                    if nodes_hook[target].get('num_links') is None:
-                        nodes_hook[target]['num_links'] = val
-                    else: 
-                        nodes_hook[target]['num_links'] += val
+                    nodes_hook[target]['num_links'] += val
                     edges.append({
                         'source': aname,
                         'target': target,
