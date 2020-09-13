@@ -39,30 +39,28 @@ class Graph:
     def get_article_list(self):
         return list(self.article_map.values())
 
+    def get_article_list_as_json(self):
+        return json.dumps(self.lgraph)
+
     def get_link_graph(self):
         return self.lgraph
 
     def get_link_graph_edge_list(self):
         nodes = []
-        nodes_hook = defaultdict(dict)
         edges = []
-        for aname, _ in self.lgraph.items():
+        for aname, links in self.lgraph.items():
             article = self.article_map[aname]
             data = {
                 'name': article.name,
                 'link': article.link,
                 'valid': article.valid,
-                'num_links': 0
+                'num_links': sum(self.bgraph[aname].values())
             }
             data.update(article.metadata)
-            nodes_hook[aname] = data
             nodes.append(data)
 
-        for aname, links in self.lgraph.items():
             for target, val in links.items():
                 if target in self.article_map:
-                    nodes_hook[aname]['num_links'] += val
-                    nodes_hook[target]['num_links'] += val
                     edges.append({
                         'source': aname,
                         'target': target,
@@ -71,56 +69,46 @@ class Graph:
 
         return {'nodes': nodes, 'links': edges}
 
-    def get_article_list_as_json(self):
-        return json.dumps(self.lgraph)
-
     def get_note_subgraph(self, name):
         article = self.article_map[name]
         data = {
             'name': article.name,
             'link': article.link,
-            'valid': article.valid
+            'valid': article.valid,
+            'num_links': sum(self.bgraph[name].values())
         }
         data.update(article.metadata)
-        nodes = [data]
         node_track = set([article.name])
+        nodes = [data]
         edges = []
 
-        for tname, count in self.lgraph[name].items():
+        for tname, count in [*self.lgraph[name].items(), *self.bgraph[name].items()]:
             if tname not in self.article_map: continue
             target = self.article_map[tname]
             if target.name not in node_track:
                 data = {
                     'name': target.name,
                     'link': target.link,
-                    'valid': target.valid
+                    'valid': target.valid,
+                    'num_links': sum(self.bgraph[target.name].values())
                 }
                 data.update(target.metadata)
                 nodes.append(data)
                 node_track.add(target.name)
-
+            
+        for tname, count in self.lgraph[name].items():
+            if tname not in self.article_map: continue
             edges.append({
-                'source': article.name,
-                'target': target.name,
+                'source': name,
+                'target': tname,
                 'value': count
             })
 
         for tname, count in self.bgraph[name].items():
             if tname not in self.article_map: continue
-            target = self.article_map[tname]
-            if target.name not in node_track:
-                data = {
-                    'name': target.name,
-                    'link': target.link,
-                    'valid': target.valid
-                }
-                data.update(target.metadata)
-                nodes.append(data)
-                node_track.add(target.name)
-
             edges.append({
-                'source': target.name,
-                'target': article.name,
+                'source': tname,
+                'target': name,
                 'value': count
             })
 
