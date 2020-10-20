@@ -24,7 +24,7 @@ class Article:
         self.content = ''
         self.valid = True
         self.verbose = verbose
-        self.metamd = ['summary']
+        self.metamd = ['summary', 'source']
 
         self.process_metadata()
         self.__dict__.update(self.metadata)
@@ -62,12 +62,25 @@ class Article:
         )
         return nt
 
+    def transform_tasks(self, string):
+        nt = re.sub(
+            pattern=r'\* \[.\] .* (#\w{8})',
+            repl=lambda m: m.group(0).replace(m.group(1), ''),
+            string=string
+        )
+        return nt
+
     def convert_html(self):
         bpath = os.path.join('./', self.basepath)
         filters = [os.path.join(bpath, 'pandoc/filters/pandoc-katex/pandoc-katex.js')]
+
+        template_file = 'pandoc/no_toc_template.html' 
+        if self.metadata.get('toc') != 'false':
+            template_file = 'pandoc/blank_template.html'
+
         pdoc_args = [
             '--section-divs',
-            '--template={}'.format(os.path.join(self.basepath, 'pandoc/blank_template.html'))
+            '--template={}'.format(os.path.join(self.basepath, template_file))
         ]
        
         # conditional args
@@ -78,6 +91,7 @@ class Article:
         self.html.update(self.metadata)
 
         content = self.transform_links(self.content)
+        content = self.transform_tasks(content)
         self.html['content'] = pp.convert_text(content,
                                                to='html5',
                                                format='md',
@@ -88,9 +102,15 @@ class Article:
         for key in self.metamd:
             if key in self.metadata:
                 value = self.transform_links(self.metadata[key])
-                self.html[key] = pp.convert_text(value,
+                html_text = pp.convert_text(value,
                                                  to='html5',
                                                  format='md',
                                                  filters=filters)
+                # strip out annoying <p> tags
+                self.html[key] = re.sub(
+                    pattern=r'^<p>(.*)</p>$',
+                    repl=lambda m: m.group(1),
+                    string=html_text
+                )
 
 
