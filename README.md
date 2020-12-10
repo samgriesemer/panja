@@ -10,7 +10,7 @@ this repo to suit your needs, but for the time being it's less general than I'd 
 # Introduction
 Panja is a simple, extendable file conversion pipeline builder written in Python. The name
 "panja" comes from the two primary tools used for file conversion and templating: [Pan]doc
-and Jin[ja], respectively. At its core, the goal of the library is to make it easy to
+and Jin[ja]. At its core, the goal of the library is to make it easy to
 piece together custom pipelines for for processing and converting files. One of the
 simplest examples of this is a basic static site renderer, taking Jinja template theme
 files and rendering a collection of pages (along with other static files).
