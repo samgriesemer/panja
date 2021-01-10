@@ -21,6 +21,7 @@ class Graph:
         self.basepath = basepath
         self.local = local
         self.article_map = {}
+        self.tag_map = defaultdict(set)
         self.lgraph = defaultdict(dict)
         self.bgraph = defaultdict(dict)
         self.init_tracker = set()
@@ -75,7 +76,7 @@ class Graph:
             'name': article.name,
             'link': article.link,
             'valid': article.valid,
-            'num_links': sum(self.bgraph[name].values())
+            'num_links': sum( self.bgraph[name].values())
         }
         data.update(article.metadata)
         node_track = set([article.name])
@@ -119,6 +120,7 @@ class Graph:
         if article.valid:
             self.article_map[name] = article
             self.process_links(article)
+            self.process_tags(article)
         return article
 
     def process_links(self, article):
@@ -139,4 +141,7 @@ class Graph:
             # index backlinks
             self.bgraph[link][article.name] = count
             
-
+    def process_tags(self, article):
+        if hasattr(article, 'tag_list'):
+            for tag in article.tag_list:
+                self.tag_map[tag].add(article)

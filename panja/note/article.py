@@ -24,7 +24,7 @@ class Article:
         self.content = ''
         self.valid = True
         self.verbose = verbose
-        self.metamd = ['summary', 'source']
+        self.metamd = ['summary', 'source', 'tags']
 
         self.process_metadata()
         self.__dict__.update(self.metadata)
@@ -50,16 +50,21 @@ class Article:
             for line in mt.group(1).split('\n'):
                 split = [line.split(':')[0], ':'.join(line.split(':')[1:])]
                 attr, val = map(str.strip, split)
+
+                if attr == 'tags' and val != '':
+                    metadata['tag_list'] = [util.title_to_fname(s[2:-2]) for s in re.split(', (?=\[)', val)]
+
                 metadata[attr.lower()] = val
 
         self.metadata = metadata
 
-    def transform_links(self, string):
+    def transform_links(self, string, tag=False):
         nt = re.sub(
             pattern=r'\[\[([^\]`]*)\]\]',
-            repl=util.title_to_link,
+            repl=lambda x: util.title_to_link(x, tag),
             string=string
         )
+
         return nt
 
     def transform_tasks(self, string):
@@ -68,11 +73,15 @@ class Article:
             repl=lambda m: m.group(0).replace(m.group(1), ''),
             string=string
         )
+
         return nt
 
     def convert_html(self):
         bpath = os.path.join('./', self.basepath)
-        filters = [os.path.join(bpath, 'pandoc/filters/pandoc-katex/pandoc-katex.js')]
+        filters = [
+            os.path.join(bpath, 'pandoc/filters/pandoc-katex/pandoc-katex.js'),
+            os.path.join(bpath, 'pandoc/filters/mermaid-filter/index.js'),
+        ]
 
         template_file = 'pandoc/no_toc_template.html' 
         if self.metadata.get('toc') != 'false':
@@ -101,11 +110,15 @@ class Article:
         # render extra metadata components to HTML
         for key in self.metamd:
             if key in self.metadata:
-                value = self.transform_links(self.metadata[key])
+                if key == 'tags':
+                    value = self.transform_links(self.metadata[key], True)
+                else:
+                    value = self.transform_links(self.metadata[key])
+
                 html_text = pp.convert_text(value,
-                                                 to='html5',
-                                                 format='md',
-                                                 filters=filters)
+                                            to='html5',
+                                            format='md',
+                                            filters=filters)
                 # strip out annoying <p> tags
                 self.html[key] = re.sub(
                     pattern=r'^<p>(.*)</p>$',
