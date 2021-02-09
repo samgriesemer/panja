@@ -80,7 +80,7 @@ class Article:
         bpath = os.path.join('./', self.basepath)
         filters = [
             os.path.join(bpath, 'pandoc/filters/pandoc-katex/pandoc-katex.js'),
-            os.path.join(bpath, 'pandoc/filters/mermaid-filter/index.js'),
+            os.path.join(bpath, 'pandoc/filters/pandoc-mermaid/index.js'),
         ]
 
         template_file = 'pandoc/no_toc_template.html' 
