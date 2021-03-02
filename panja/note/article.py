@@ -68,9 +68,18 @@ class Article:
         return nt
 
     def transform_tasks(self, string):
+        def repl(m):
+            s = m.group(0)
+            if m.group(1) == 'S':
+                s = s.replace(m.group(1), ' ')
+            if m.group(2) is not None:
+                s = s.replace(m.group(2), '<span class="tight-box">'+m.group(2)+'</span>')    
+            s = s.replace(m.group(3), '')
+            return s
+
         nt = re.sub(
-            pattern=r'\* \[.\] .* (#\w{8})',
-            repl=lambda m: m.group(0).replace(m.group(1), ''),
+            pattern=r'\* \[(.)\] .*?(\([^\)]*\))?(  #\w{8})',
+            repl=repl,
             string=string
         )
 
@@ -78,6 +87,8 @@ class Article:
 
     def convert_html(self):
         bpath = os.path.join('./', self.basepath)
+
+        # TODO: put this in site build somehow
         filters = [
             os.path.join(bpath, 'pandoc/filters/pandoc-katex/pandoc-katex.js'),
             os.path.join(bpath, 'pandoc/filters/pandoc-mermaid/index.js'),
