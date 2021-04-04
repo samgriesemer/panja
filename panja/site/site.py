@@ -513,9 +513,11 @@ class Site(object):
             port = 8000
             liveport = 35729
             if not liveport:
-                server.serve(port=port, host='0.0.0.0', root=self.outpath)
+                server.serve(port=port, host='0.0.0.0',
+                        root=self.outpath, default_extension='.html')
             else:
-                server.serve(port=port, host='0.0.0.0', root=self.outpath, liveport=liveport)
+                server.serve(port=port, host='0.0.0.0',
+                        root=self.outpath, liveport=liveport, default_extension='.html')
 
     def watch_handler(self, files):
         spaths = []
@@ -544,5 +546,4 @@ class Site(object):
     def __repr__(self):
         return "%s('%s', '%s')" % (type(self).__name__,
                                    self.searchpaths, self.outpath)
-
 

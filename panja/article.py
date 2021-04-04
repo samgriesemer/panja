@@ -4,7 +4,7 @@ import inspect
 import pypandoc as pp
 from colorama import Fore
 
-from ..utils import util
+from .utils import util
 
 class Article:
     '''
@@ -24,7 +24,7 @@ class Article:
         self.content = ''
         self.valid = True
         self.verbose = verbose
-        self.metamd = ['summary', 'source', 'tags']
+        self.metamd = ['summary', 'source', 'tags', 'collection']
 
         self.process_metadata()
         self.__dict__.update(self.metadata)
@@ -38,7 +38,11 @@ class Article:
         with open(self.fullpath, 'r') as f:
             ft = f.read()
             mt = re.match('---\n(.*?)\n---', ft, flags=re.DOTALL)
-            self.content = ft
+
+            if mt is not None:
+                self.content = ft.replace(mt.group(0), '')
+            else:
+                self.content = ft
 
             if mt is None:
                 self.valid = False
@@ -53,6 +57,9 @@ class Article:
 
                 if attr == 'tags' and val != '':
                     metadata['tag_list'] = [util.title_to_fname(s[2:-2]) for s in re.split(', (?=\[)', val)]
+
+                if attr == 'collection' and val != '':
+                    metadata['coll_list'] = [util.title_to_fname(s[2:-2]) for s in re.split(', (?=\[)', val)]
 
                 metadata[attr.lower()] = val
 
@@ -72,13 +79,16 @@ class Article:
             s = m.group(0)
             if m.group(1) == 'S':
                 s = s.replace(m.group(1), ' ')
-            if m.group(2) is not None:
-                s = s.replace(m.group(2), '<span class="tight-box">'+m.group(2)+'</span>')    
-            s = s.replace(m.group(3), '')
+            if m.group(3) is not None:
+                s = s.replace(m.group(3), '<span class="tight-box">'+m.group(3)+'</span>')    
+            s = s.replace(m.group(4), '')
+
+            if m.group(1) == 'S':
+                s = s.replace(m.group(2), '<span style="color:green">'+m.group(2)+'</span>')
             return s
 
         nt = re.sub(
-            pattern=r'\* \[(.)\] .*?(\([^\)]*\))?(  #\w{8})',
+            pattern=r'\* \[(.)\] (.*?) ?(\([^\)]*\))?(  #\w{8})',
             repl=repl,
             string=string
         )
@@ -121,7 +131,7 @@ class Article:
         # render extra metadata components to HTML
         for key in self.metamd:
             if key in self.metadata:
-                if key == 'tags':
+                if key == 'tags' or key == 'collection':
                     value = self.transform_links(self.metadata[key], True)
                 else:
                     value = self.transform_links(self.metadata[key])

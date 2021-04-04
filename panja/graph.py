@@ -5,8 +5,8 @@ import json
 from collections import defaultdict
 from tqdm import tqdm
 
-from ..note.article import Article
-from ..utils import util
+from .article import Article
+from .utils import util
 
 class Graph:
     def __init__(self, notepath, basepath=None, local=False, html=False):
@@ -22,6 +22,7 @@ class Graph:
         self.local = local
         self.article_map = {}
         self.tag_map = defaultdict(set)
+        self.coll_map = defaultdict(set)
         self.lgraph = defaultdict(dict)
         self.bgraph = defaultdict(dict)
         self.init_tracker = set()
@@ -121,6 +122,7 @@ class Graph:
             self.article_map[name] = article
             self.process_links(article)
             self.process_tags(article)
+            self.process_coll(article)
         return article
 
     def process_links(self, article):
@@ -145,3 +147,8 @@ class Graph:
         if hasattr(article, 'tag_list'):
             for tag in article.tag_list:
                 self.tag_map[tag].add(article)
+
+    def process_coll(self, article):
+        if hasattr(article, 'coll_list'):
+            for ref in article.coll_list:
+                self.coll_map[ref].add(article)
