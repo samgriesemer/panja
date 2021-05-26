@@ -20,6 +20,9 @@ def check_dir(path):
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
+def fname_to_title(fname):
+    return fname.replace('_', ' ')
+
 def title_to_fname(title):
     title = re.sub(r' *\n *', ' ', title)
     return title.replace(' ', '_')

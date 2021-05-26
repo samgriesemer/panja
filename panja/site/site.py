@@ -84,6 +84,7 @@ class Site(object):
                  staticpaths=None,
                  basepath=None,
                  mergecontexts=False,
+                 postrender=None
                  ):
         self.env = environment
         self.searchpaths = searchpaths
@@ -95,6 +96,7 @@ class Site(object):
         self.staticpaths = staticpaths or []
         self.basepath = basepath
         self.mergecontexts = mergecontexts
+        self.postrender = postrender
 
     @classmethod
     def make_site(cls,
@@ -110,7 +112,9 @@ class Site(object):
                   filters={},
                   env_globals={},
                   env_kwargs=None,
-                  mergecontexts=False):
+                  mergecontexts=False,
+                  postrender=None
+                  ):
         """Create a :class:`Site <Site>` object.
 
         :param searchpaths:
@@ -232,6 +236,7 @@ class Site(object):
                    staticpaths=staticpaths,
                    basepath=basepath,
                    mergecontexts=mergecontexts,
+                   postrender=postrender
                    )
 
     @property
@@ -542,6 +547,10 @@ class Site(object):
             else:
                 templates = self.get_dependencies(filename)
                 self.render_templates(templates)
+
+        # add core template re-render?
+        for page in self.postrender:
+            self.render_template(self.env.get_template(page))
 
     def __repr__(self):
         return "%s('%s', '%s')" % (type(self).__name__,
