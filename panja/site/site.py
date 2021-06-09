@@ -12,7 +12,9 @@ import os
 import re
 import shutil
 import warnings
+
 from colorama import Fore
+from tqdm import tqdm
 
 from jinja2 import Environment, FileSystemLoader, Template
 from jinja2.exceptions import TemplateSyntaxError
@@ -84,7 +86,7 @@ class Site(object):
                  staticpaths=None,
                  basepath=None,
                  mergecontexts=False,
-                 postrender=None
+                 postreload=None
                  ):
         self.env = environment
         self.searchpaths = searchpaths
@@ -96,7 +98,7 @@ class Site(object):
         self.staticpaths = staticpaths or []
         self.basepath = basepath
         self.mergecontexts = mergecontexts
-        self.postrender = postrender
+        self.postreload = postreload
 
     @classmethod
     def make_site(cls,
@@ -113,7 +115,8 @@ class Site(object):
                   env_globals={},
                   env_kwargs=None,
                   mergecontexts=False,
-                  postrender=None
+                  postreload=None,
+                  verbose=True
                   ):
         """Create a :class:`Site <Site>` object.
 
@@ -164,7 +167,7 @@ class Site(object):
             Defaults to ``None``.
 
         :param basepath:
-            A string  specifying the absolute or relative path that
+            A string specifying the absolute or relative path that
             `searchpaths` and `outpath` should be taken relative to, if they
             themselves are relative. 
 
@@ -236,7 +239,7 @@ class Site(object):
                    staticpaths=staticpaths,
                    basepath=basepath,
                    mergecontexts=mergecontexts,
-                   postrender=postrender
+                   postreload=postreload
                    )
 
     @property
@@ -264,7 +267,7 @@ class Site(object):
             raise UnicodeError('Unable to decode %s: %s' % (template_name, e))
         except TemplateSyntaxError as e:
             if template_name.split('.')[-1] == 'md':
-                print(Fore.RED + 'jinja doesn\'t like syntax in {}, ignoring'.format(template_name) + Fore.RESET)
+                self.logger.info(Fore.RED + 'jinja doesn\'t like syntax in {}, ignoring'.format(template_name) + Fore.RESET)
                 template = Template('')
                 template.name = template_name
                 template.filename = self.find_searchpath(template_name)
@@ -348,7 +351,6 @@ class Site(object):
 
         :param filename: the name of the file to check
         """
-        #print(filename, any((x.startswith(".") for x in filename.split(os.path.sep))))
         return any((x.startswith(".") for x in filename.split(os.path.sep)))
 
     def is_template(self, filename):
@@ -395,7 +397,7 @@ class Site(object):
             template.name)``.
 
         """
-        self.logger.info("Rendering %s..." % template.name)
+        #self.logger.info("Rendering %s..." % template.name)
 
         if context is None:
             context = self.get_context(template)
@@ -425,7 +427,10 @@ class Site(object):
             template.name)``.
 
         """
-        for template in templates:
+        for template in tqdm(templates,
+                             total=len(self.template_names),
+                             prefix='site',
+                             colour='green'):
             self.render_template(template, filepath)
 
     def find_searchpath(self, name):
@@ -518,11 +523,16 @@ class Site(object):
             port = 8000
             liveport = 35729
             if not liveport:
-                server.serve(port=port, host='0.0.0.0',
-                        root=self.outpath, default_extension='.html')
+                server.serve(port=port,
+                             host='0.0.0.0',
+                             root=self.outpath,
+                             default_extension='.html')
             else:
-                server.serve(port=port, host='0.0.0.0',
-                        root=self.outpath, liveport=liveport, default_extension='.html')
+                server.serve(port=port,
+                             host='0.0.0.0',
+                             root=self.outpath,
+                             liveport=liveport,
+                             default_extension='.html')
 
     def watch_handler(self, files):
         spaths = []
@@ -548,9 +558,7 @@ class Site(object):
                 templates = self.get_dependencies(filename)
                 self.render_templates(templates)
 
-        # add core template re-render?
-        for page in self.postrender:
-            self.render_template(self.env.get_template(page))
+        self.postreload(self)
 
     def __repr__(self):
         return "%s('%s', '%s')" % (type(self).__name__,

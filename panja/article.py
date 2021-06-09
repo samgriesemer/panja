@@ -3,72 +3,91 @@ import os
 import inspect
 import pypandoc as pp
 from colorama import Fore
+from collections import defaultdict
 
 from .utils import util
 
 class Article:
     '''
     Article object for operating on Markdown files. The class takes care of a lot of
-    desired features automatically, stripping metadata out of YAML block,
-    performing custom text transformations (like wiki links to Markdown style
-    links), and converting the resulting text to HTML. This class is admittedly
-    a bit sloppy and specific to my own needs at the moment.
+    desired features automatically, stripping metadata out of YAML block, performing
+    custom text transformations (like wiki links to Markdown style links), and
+    converting the resulting text to HTML. This class is admittedly a bit sloppy and
+    specific to my own needs at the moment.
+
+    :param fullpath:
+
+    :param name:
+
+    :param verbose:
+
+    :var link:
+
     '''
-    def __init__(self, fullpath, name, basepath, local=False, verbose=False):
+    def __init__(self, fullpath, name, verbose=True):
         self.fullpath = fullpath
-        self.basepath = basepath
         self.name = name
+
         self.link = name
-        self.metadata = {}
         self.html = ''
         self.content = ''
         self.valid = True
         self.verbose = verbose
-        self.metamd = ['summary', 'source', 'tags', 'collection']
 
-        self.process_metadata()
-        self.__dict__.update(self.metadata)
+        # lightweight parsing
+        self.metadata = self.process_metadata()
 
-        # stop processing early if public and other
-        if not local and (self.metadata.get('type') == 'journal' or
-                          self.metadata.get('visibility') == 'private'):
-            self.valid = False
+        if self.valid:
+            self.links = self.process_links(self.content)
+
+            # could build in backlink processing to a process_links-like function
 
     def process_metadata(self):
         with open(self.fullpath, 'r') as f:
             ft = f.read()
             mt = re.match('---\n(.*?)\n---', ft, flags=re.DOTALL)
-
-            if mt is not None:
-                self.content = ft.replace(mt.group(0), '')
-            else:
-                self.content = ft
+            metadata = {}
 
             if mt is None:
+                self.content = ft
                 self.valid = False
+
                 if self.verbose:
                     print(Fore.RED + '[invalid metadata] ' + Fore.RESET + self.name)
-                return
-            
-            metadata = {}
+
+                return metadata
+
+            self.content = ft.replace(mt.group(0), '')
             for line in mt.group(1).split('\n'):
                 split = [line.split(':')[0], ':'.join(line.split(':')[1:])]
                 attr, val = map(str.strip, split)
-
-                if attr == 'tags' and val != '':
-                    metadata['tag_list'] = [util.title_to_fname(s[2:-2]) for s in re.split(', (?=\[)', val)]
-
-                if attr == 'collection' and val != '':
-                    metadata['coll_list'] = [util.title_to_fname(s[2:-2]) for s in re.split(', (?=\[)', val)]
-
                 metadata[attr.lower()] = val
 
-        self.metadata = metadata
+            if 'tags' in metadata:
+                metadata['tag_links'] = self.process_links(metadata['tags'])
+            
+            if 'series' in metadata:
+                metadata['series_links'] = self.process_links(metadata['series'])
 
-    def transform_links(self, string, tag=False):
+        return metadata
+
+    def process_links(self, string):
+        links = re.findall(
+            pattern=r'\[\[([^\]`]*)\]\]',
+            string=string
+        )
+        
+        lcounts = defaultdict(int)
+        for link in links:
+            l = util.title_to_fname(link)
+            lcounts[l] += 1
+
+        return lcounts
+
+    def transform_links(self, string, path=''):
         nt = re.sub(
             pattern=r'\[\[([^\]`]*)\]\]',
-            repl=lambda x: util.title_to_link(x, tag),
+            repl=lambda x: util.title_to_link(x, path),
             string=string
         )
 
@@ -95,25 +114,11 @@ class Article:
 
         return nt
 
-    def convert_html(self):
-        bpath = os.path.join('./', self.basepath)
+    def convert_html(self, metamd=None, pdoc_args=None, filters=None):
+        if metamd is None: metamd= []
+        if pdoc_args is None: pdoc_args = []
+        if filters is None: filters = []
 
-        # TODO: put this in site build somehow
-        filters = [
-            os.path.join(bpath, 'pandoc/filters/pandoc-katex/pandoc-katex.js'),
-            os.path.join(bpath, 'pandoc/filters/pandoc-mermaid/index.js'),
-        ]
-
-        template_file = 'pandoc/no_toc_template.html' 
-        if self.metadata.get('toc') != 'false':
-            template_file = 'pandoc/blank_template.html'
-
-        pdoc_args = [
-            '--section-divs',
-            '--template={}'.format(os.path.join(self.basepath, template_file))
-        ]
-       
-        # conditional args
         if self.metadata.get('toc') != 'false':
             pdoc_args.append('--toc')
 
@@ -129,10 +134,10 @@ class Article:
                                                filters=filters)
 
         # render extra metadata components to HTML
-        for key in self.metamd:
+        for key in metamd:
             if key in self.metadata:
-                if key == 'tags' or key == 'collection':
-                    value = self.transform_links(self.metadata[key], True)
+                if key == 'tags':
+                    value = self.transform_links(self.metadata[key], 'tag/')
                 else:
                     value = self.transform_links(self.metadata[key])
 
@@ -140,6 +145,7 @@ class Article:
                                             to='html5',
                                             format='md',
                                             filters=filters)
+
                 # strip out annoying <p> tags
                 self.html[key] = re.sub(
                     pattern=r'^<p>(.*)</p>$',

@@ -27,10 +27,7 @@ def title_to_fname(title):
     title = re.sub(r' *\n *', ' ', title)
     return title.replace(' ', '_')
 
-def title_to_link(match, tag=False):
+def title_to_link(match, path=''):
     '''Return Markdown-style link from file title'''
     title = match.group(1)
-
-    if tag:
-        return '['+title+'](tag/'+title_to_fname(title)+')'
-    return '['+title+']('+title_to_fname(title)+')'
+    return '['+title+']('+path+title_to_fname(title)+')'
