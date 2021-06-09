@@ -9,6 +9,7 @@ Uses Jinja2 to compile templates.
 import inspect
 import logging
 import os
+import sys
 import re
 import shutil
 import warnings
@@ -19,6 +20,8 @@ from tqdm import tqdm
 from jinja2 import Environment, FileSystemLoader, Template
 from jinja2.exceptions import TemplateSyntaxError
 from livereload import Server
+
+from .. import utils
 
 
 def _has_argument(func):
@@ -35,9 +38,8 @@ def _has_argument(func):
         # Old way
         return bool(inspect.getargspec(func).args)
 
-
 class Site(object):
-    """The Site object.
+    """The Site object render.
 
     :param environment:
         A :class:`jinja2.Environment`.
@@ -99,6 +101,7 @@ class Site(object):
         self.basepath = basepath
         self.mergecontexts = mergecontexts
         self.postreload = postreload
+        self.postrender = False
 
     @classmethod
     def make_site(cls,
@@ -228,7 +231,13 @@ class Site(object):
 
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.INFO)
-        logger.addHandler(logging.StreamHandler())
+        #logger.addHandler(logging.StreamHandler())
+
+        handler = utils.TqdmLoggingHandler()
+        #formatter = logging.Formatter('\x1b[80D\x1b[1A\x1b[K%(message)s')
+        #handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
         return cls(environment,
                    searchpaths=searchpaths,
                    outpath=outpath,
@@ -397,7 +406,7 @@ class Site(object):
             template.name)``.
 
         """
-        #self.logger.info("Rendering %s..." % template.name)
+        self.logger.info("Rendering %s..." % template.name)
 
         if context is None:
             context = self.get_context(template)
@@ -427,9 +436,17 @@ class Site(object):
             template.name)``.
 
         """
+        #rlogger = logging.getLogger(__name__+'a')
+        #rlogger.setLevel(logging.INFO)
+        #handler = utils.TqdmLoggingHandler()
+        #formatter = logging.Formatter('\x1b[80D\x1b[1A\x1b[K%(message)s')
+        #handler.setFormatter(formatter)
+        #rlogger.addHandler(handler)
+        #print('-'*80)
+
         for template in tqdm(templates,
                              total=len(self.template_names),
-                             prefix='site',
+                             desc='site render',
                              colour='green'):
             self.render_template(template, filepath)
 
@@ -441,7 +458,9 @@ class Site(object):
         return None
 
     def copy_static(self, files):
-        for f in files:
+        for f in tqdm(files,
+                      desc='static copy',
+                      colour='blue'):
             # find associated search path for static file
             input_location = self.find_searchpath(f)
 
@@ -505,6 +524,8 @@ class Site(object):
         if build:
             self.render_templates(self.templates)
             self.copy_static(self.static_names)
+            self.postreload(self)
+            self.postrender = True
         
         if server or reloader or liveport:
             server = Server()

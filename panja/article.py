@@ -29,7 +29,7 @@ class Article:
         self.name = name
 
         self.link = name
-        self.html = ''
+        self.html = {}
         self.content = ''
         self.valid = True
         self.verbose = verbose
@@ -145,12 +145,9 @@ class Article:
                                             to='html5',
                                             format='md',
                                             filters=filters)
-
-                # strip out annoying <p> tags
+                
                 self.html[key] = re.sub(
                     pattern=r'^<p>(.*)</p>$',
                     repl=lambda m: m.group(1),
                     string=html_text
                 )
-
-
