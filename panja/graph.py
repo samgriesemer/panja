@@ -1,12 +1,5 @@
-import os
-import inspect
-import re
 import json
 from collections import defaultdict
-from tqdm import tqdm
-
-from .article import Article
-from .utils import util
 
 class ArticleGraph:
     def __init__(self):

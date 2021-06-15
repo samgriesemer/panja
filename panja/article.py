@@ -1,11 +1,10 @@
 import re
-import os
-import inspect
 import pypandoc as pp
 from colorama import Fore
 from collections import defaultdict
+import misaka as m
 
-from .utils import util
+from . import utils
 
 class Article:
     '''
@@ -79,15 +78,26 @@ class Article:
         
         lcounts = defaultdict(int)
         for link in links:
-            l = util.title_to_fname(link)
+            l = utils.title_to_fname(link)
             lcounts[l] += 1
 
         return lcounts
 
+        #for line in file.readlines():
+
+    
+        # a start on bl processing
+        #for m in re.finditer(pat, ft):
+            #start = m.start()
+            #lno = ft.count('\n', 0, start) +1
+            #offset = start - ft.rfind('\n',0,start)
+            #word = m.group(1)
+            #print('{} @ line {}, col {}'.format(word, lno, offset))
+
     def transform_links(self, string, path=''):
         nt = re.sub(
             pattern=r'\[\[([^\]`]*)\]\]',
-            repl=lambda x: util.title_to_link(x, path),
+            repl=lambda x: utils.title_to_link(x, path),
             string=string
         )
 
@@ -114,7 +124,7 @@ class Article:
 
         return nt
 
-    def convert_html(self, metamd=None, pdoc_args=None, filters=None):
+    def convert_html(self, metamd=None, pdoc_args=None, filters=None, fast=False):
         if metamd is None: metamd= []
         if pdoc_args is None: pdoc_args = []
         if filters is None: filters = []
@@ -127,6 +137,11 @@ class Article:
 
         content = self.transform_links(self.content)
         content = self.transform_tasks(content)
+
+        if fast:
+            self.html['content'] = m.html(content)
+            return
+
         self.html['content'] = pp.convert_text(content,
                                                to='html5',
                                                format='md',
