@@ -17,6 +17,8 @@ class ArticleGraph:
         # global metadata indexes
         self.tag_map = defaultdict(set)
         self.series_map = defaultdict(set)
+        self.bl_map = defaultdict(lambda: defaultdict(list))
+        self.bl_head = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
     def get_article(self, name):
         return self.article_map.get(name) 
@@ -43,6 +45,12 @@ class ArticleGraph:
             slist.append(stext)
 
         return slist
+
+    def get_backlinks(self, name):
+        return self.bl_map.get(name, {})
+
+    def get_headlinks(self, name):
+        return self.bl_head.get(name, {})
 
     def get_edge_list(self):
         nodes = []
@@ -121,7 +129,8 @@ class ArticleGraph:
 
             for name in cur_article.links:
                 self.bgraph[name].pop(article.name)
-                
+                self.bl_map[name].pop(article.name)
+
             for tag in cur_article.metadata.get('tag_links', []):
                 self.tag_map[tag].remove(article.name)
 
@@ -132,6 +141,7 @@ class ArticleGraph:
         self.process_links(article)
         self.process_tags(article)
         self.process_series(article)
+        self.process_backlinks(article)
 
     def process_links(self, article):
         for link, count in article.links.items():
@@ -147,3 +157,10 @@ class ArticleGraph:
         if 'series_links' in article.metadata:
             for ref in article.metadata['series_links']:
                 self.series_map[ref].add(article.name)
+
+    def process_backlinks(self, article):
+        for name, data in article.linkdata.items():
+            self.bl_map[name][article.name] += data
+
+            for link in data:
+                self.bl_head[name][link['header']][article.name] += [link]

@@ -1,8 +1,11 @@
 import re
-import pypandoc as pp
-from colorama import Fore
 from collections import defaultdict
-import misaka as m
+
+import pypandoc as pp
+import pandocfilters as pf
+import misaka
+
+from colorama import Fore
 
 from . import utils
 
@@ -29,6 +32,8 @@ class Article:
 
         self.link = name
         self.html = {}
+        self.raw_content = ''
+        self.raw_lines = []
         self.content = ''
         self.valid = True
         self.verbose = verbose
@@ -37,15 +42,22 @@ class Article:
         self.metadata = self.process_metadata()
 
         if self.valid:
-            self.links = self.process_links(self.content)
+            self.links    = self.process_links(self.content)
+            self.tree     = self.context_tree()
+            self.linkdata = self.process_linkdata()
 
             # could build in backlink processing to a process_links-like function
 
     def process_metadata(self):
         with open(self.fullpath, 'r') as f:
             ft = f.read()
-            mt = re.match('---\n(.*?)\n---', ft, flags=re.DOTALL)
+            self.raw_content = ft
+
+            f.seek(0)
+            self.raw_lines = f.readlines()
+
             metadata = {}
+            mt = re.match('---\n(.*?)\n---', ft, flags=re.DOTALL)
 
             if mt is None:
                 self.content = ft
@@ -70,29 +82,128 @@ class Article:
 
         return metadata
 
+    def context_tree(self):
+        tree = {}
+        current_header = {'c': ''}
+
+        def comp(key, value, format, meta):
+            if key == 'Header':
+                #print(self.name)
+                #print(value[2][0])
+                #current_header['c'] = value[2][0]['c'][1][0]['c']
+
+                title = []
+                for v in value[2]:
+                    for vc in v['c'][1:]:
+                        outer = vc
+                        #print('+++', outer[0])
+                        if type(outer) == str:
+                            title.append(outer)
+                            continue
+                        elif type(outer[0]) == str:
+                            title.append(outer[0])
+                            continue
+                        elif 'c' in outer[0]:
+                            title.append(outer[0]['c'])
+                        else:
+                            title.append(' ')
+                current_header['c'] = ''.join([str(s) for s in title])
+
+            if key == 'BulletList' or key == 'OrderedList':
+                v = value if key == 'BulletList' else value[1]
+
+                for item in v:
+                    pos   = item[0]['c'][0][2][0][1].split('-')
+                    start = pos[0][1:]
+                    end   = pos[-1]
+
+                    sl, sc = map(int, start.split(':'))
+                    el, ec = map(int, end.split(':'))
+
+                    obj = {
+                        'c': [],
+                        'p': tree.get(sl),
+                        'v': ''.join(self.raw_lines[(sl-1):(el-1)]),
+                        'h': current_header['c']
+                    }
+
+                    if obj['p'] is not None:
+                        obj['p']['c'].append(obj)
+
+                    for i in range(sl, el):
+                        tree[i] = obj
+
+            if key == 'Para':
+                start = value[0]['c'][0][2][0][1].split('-')[0][1:]
+                end   = value[-1]['c'][0][2][0][1].split('-')[-1]
+
+                sl, sc = map(int, start.split(':'))
+                el, ec = map(int, end.split(':'))
+
+                obj = {
+                    'c': [],
+                    'p': None,
+                    'v': ''.join(self.raw_lines[(sl-1):el]),
+                    'h': current_header['c']
+                }
+
+                for i in range(sl, el+1):
+                    if tree.get(i) is None:
+                        tree[i] = obj
+
+        cm = pp.convert_file(self.fullpath, format='commonmark+sourcepos', to='json')
+        pf.applyJSONFilters([comp], cm)
+
+        return tree
+
+    def process_linkdata(self):
+        links = re.finditer(
+            pattern=r'\[\[([^\]`]*)\]\]',
+            string=self.raw_content
+        )
+
+        linkdata = defaultdict(list)
+
+        for m in links:
+            # positional processing
+            start = m.start()
+            line = self.raw_content.count('\n', 0, start) +1
+            col = start - self.raw_content.rfind('\n', 0, start)
+            name = utils.title_to_fname(m.group(1))
+
+            text = '(will be removed)'
+            header = ''
+            context = self.tree.get(line, '')
+            if context:
+                if context.get('p'):
+                    header = context['p']['h']
+                    text = context['p']['v']
+                else:
+                    header = context['h']
+                    text = context['v']
+           
+            linkdata[name].append({
+                'ref':  self,
+                'line': line,
+                'col':  col,
+                'context': text,
+                'header': str(header)
+            })
+
+        return linkdata
+
     def process_links(self, string):
         links = re.findall(
             pattern=r'\[\[([^\]`]*)\]\]',
             string=string
         )
-        
+
         lcounts = defaultdict(int)
         for link in links:
             l = utils.title_to_fname(link)
             lcounts[l] += 1
 
         return lcounts
-
-        #for line in file.readlines():
-
-    
-        # a start on bl processing
-        #for m in re.finditer(pat, ft):
-            #start = m.start()
-            #lno = ft.count('\n', 0, start) +1
-            #offset = start - ft.rfind('\n',0,start)
-            #word = m.group(1)
-            #print('{} @ line {}, col {}'.format(word, lno, offset))
 
     def transform_links(self, string, path=''):
         nt = re.sub(
@@ -108,16 +219,17 @@ class Article:
             s = m.group(0)
             if m.group(1) == 'S':
                 s = s.replace(m.group(1), ' ')
-            if m.group(3) is not None:
-                s = s.replace(m.group(3), '<span class="tight-box">'+m.group(3)+'</span>')    
-            s = s.replace(m.group(4), '')
-
-            if m.group(1) == 'S':
                 s = s.replace(m.group(2), '<span style="color:green">'+m.group(2)+'</span>')
+            if m.group(3):
+                s = s.replace(m.group(3), '<span style="color:red">'+m.group(3)+'</span>')
+            if m.group(4) is not None:
+                s = s.replace(m.group(4), '<span class="tight-box">'+m.group(4)+'</span>')    
+            s = s.replace(m.group(5), '')
+
             return s
 
         nt = re.sub(
-            pattern=r'\* \[(.)\] (.*?) ?(\([^\)]*\))?(  #\w{8})',
+            pattern=r'\* \[(.)\] (.*?) ?(!{1,3})? ?(\([^\)]*\))?(  #\w{8})',
             repl=repl,
             string=string
         )
@@ -125,7 +237,7 @@ class Article:
         return nt
 
     def convert_html(self, metamd=None, pdoc_args=None, filters=None, fast=False):
-        if metamd is None: metamd= []
+        if metamd is None: metamd = []
         if pdoc_args is None: pdoc_args = []
         if filters is None: filters = []
 
@@ -134,19 +246,33 @@ class Article:
 
         self.html = {}
         self.html.update(self.metadata)
-
+        
+        # these should really become pandoc filters, move function pandocfilters filters
+        # in regular location; can be location for all future modifiers (like tikz!)
         content = self.transform_links(self.content)
         content = self.transform_tasks(content)
 
         if fast:
-            self.html['content'] = m.html(content)
-            return
+            self.html['content'] = misaka.html(content)
+        else:
+            # convert regular file content
+            self.html['content'] = pp.convert_text(content,
+                                                   to='html5',
+                                                   format='md',
+                                                   extra_args=pdoc_args,
+                                                   filters=filters)
 
-        self.html['content'] = pp.convert_text(content,
-                                               to='html5',
-                                               format='md',
-                                               extra_args=pdoc_args,
-                                               filters=filters)
+        # convert backlinks
+        for linklist in self.linkdata.values():
+            for link in linklist:
+                context = self.transform_links(link['context'])
+                if fast:
+                    link['html'] = misaka.html(context)
+                else:
+                    link['html'] = pp.convert_text(context,
+                                                   to='html5',
+                                                   format='md',
+                                                   filters=filters)
 
         # render extra metadata components to HTML
         for key in metamd:
@@ -156,10 +282,13 @@ class Article:
                 else:
                     value = self.transform_links(self.metadata[key])
 
-                html_text = pp.convert_text(value,
-                                            to='html5',
-                                            format='md',
-                                            filters=filters)
+                if fast:
+                    html_text = misaka.html(value)
+                else:
+                    html_text = pp.convert_text(value,
+                                                to='html5',
+                                                format='md',
+                                                filters=filters)
                 
                 self.html[key] = re.sub(
                     pattern=r'^<p>(.*)</p>$',

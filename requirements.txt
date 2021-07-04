@@ -4,3 +4,4 @@ tqdm
 livereload
 docopt
 colorama
+misaka

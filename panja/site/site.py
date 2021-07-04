@@ -443,9 +443,14 @@ class Site(object):
         #handler.setFormatter(formatter)
         #rlogger.addHandler(handler)
         #print('-'*80)
+        size = 0
+        if type(templates) == list:
+            size = len(templates)
+        else:
+            size = len(self.template_names)
 
         for template in tqdm(templates,
-                             total=len(self.template_names),
+                             total=size,
                              desc='site render',
                              colour='green'):
             self.render_template(template, filepath)
@@ -540,7 +545,7 @@ class Site(object):
             for searchpath in self.searchpaths:
                 server.watch(os.path.join(searchpath, '**'), self.watch_handler)
 
-        if server or liveport:
+        if server or reloader or liveport:
             port = 8000
             liveport = 35729
             if not liveport:
