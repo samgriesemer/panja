@@ -1,5 +1,6 @@
 import re
 from collections import defaultdict
+from datetime import datetime
 
 import pypandoc as pp
 import pandocfilters as pf
@@ -37,14 +38,13 @@ class Article:
         self.content = ''
         self.valid = True
         self.verbose = verbose
+        self.ctime = datetime.now().timestamp()
 
         # lightweight parsing
         self.metadata = self.process_metadata()
-
-        if self.valid:
-            self.links    = self.process_links(self.content)
-            self.tree     = self.context_tree()
-            self.linkdata = self.process_linkdata()
+        self.links = {}
+        self.tree = {}
+        self.linkdata = {}
 
             # could build in backlink processing to a process_links-like function
 
@@ -204,6 +204,11 @@ class Article:
             lcounts[l] += 1
 
         return lcounts
+
+    def process_structure(self):
+        self.links    = self.process_links(self.content)
+        self.tree     = self.context_tree()
+        self.linkdata = self.process_linkdata()
 
     def transform_links(self, string, path=''):
         nt = re.sub(
