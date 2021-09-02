@@ -57,7 +57,7 @@ class Article:
             self.raw_lines = f.readlines()
 
             metadata = {}
-            mt = re.match('---\n(.*?)\n---', ft, flags=re.DOTALL)
+            mt = re.match('---\n(.*?)\n(---|\.\.\.)', ft, flags=re.DOTALL)
 
             if mt is None:
                 self.content = ft
@@ -69,8 +69,16 @@ class Article:
                 return metadata
 
             self.content = ft.replace(mt.group(0), '')
-            for line in mt.group(1).split('\n'):
-                split = [line.split(':')[0], ':'.join(line.split(':')[1:])]
+            #for line in mt.group(1).split('\n'):
+                #split = [line.split(':')[0], ':'.join(line.split(':')[1:])]
+                #attr, val = map(str.strip, split)
+                #metadata[attr.lower()] = val
+
+            # doesnt face issues if metadata components have colon and are only
+            # one line, but when multiline colons can have unexpected effects
+            #print(mt.group(1))
+            for m in re.findall('.*:[^:]*$', mt.group(1), flags=re.MULTILINE):
+                split = [m.split(':')[0], ':'.join(m.split(':')[1:])]
                 attr, val = map(str.strip, split)
                 metadata[attr.lower()] = val
 
@@ -78,7 +86,9 @@ class Article:
                 metadata['tag_links'] = self.process_links(metadata['tags'])
             
             if 'series' in metadata:
+                #print(metadata['series'])
                 metadata['series_links'] = self.process_links(metadata['series'])
+            #print(metadata)
 
         return metadata
 
@@ -257,15 +267,19 @@ class Article:
         content = self.transform_links(self.content)
         content = self.transform_tasks(content)
 
-        if fast:
-            self.html['content'] = misaka.html(content)
-        else:
-            # convert regular file content
-            self.html['content'] = pp.convert_text(content,
-                                                   to='html5',
-                                                   format='md',
-                                                   extra_args=pdoc_args,
-                                                   filters=filters)
+        try:
+            if fast:
+                self.html['content'] = misaka.html(content)
+            else:
+                # convert regular file content
+                self.html['content'] = pp.convert_text(content,
+                                                       to='html5',
+                                                       format='md',
+                                                       extra_args=pdoc_args,
+                                                       filters=filters)
+        except RuntimeError:
+            print(Fore.RED + 'Pandoc failed to convert content in file '+ self.name)
+            raise
 
         # convert backlinks
         for linklist in self.linkdata.values():

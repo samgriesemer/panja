@@ -31,7 +31,8 @@ class Cache():
         self.default = default
 
         self.obj = None
-        self.file = Path(path, name).with_suffix('.pkl')
+        self.file = Path(path, name)
+        self.file = self.file.with_suffix(self.file.suffix+'.pkl')
         self.rtime = -1
 
         Path(path).mkdir(parents=True, exist_ok=True)

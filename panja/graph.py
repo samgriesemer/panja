@@ -43,8 +43,10 @@ class ArticleGraph:
         for series in self.get_series_list(name):
             stext = self.get_article(series).metadata.get('series','')
             slist.append(stext)
-
         return slist
+
+    def get_series_obj_list(self, name):
+        return [self.article_map[s] for s in self.get_series_list(name)]
 
     def get_backlinks(self, name):
         return self.bl_map.get(name, {})
@@ -155,6 +157,7 @@ class ArticleGraph:
 
     def process_series(self, article):
         if 'series_links' in article.metadata:
+            self.series_map[article.name].add(article.name)
             for ref in article.metadata['series_links']:
                 self.series_map[ref].add(article.name)
 
