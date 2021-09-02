@@ -76,7 +76,6 @@ class Article:
 
             # doesnt face issues if metadata components have colon and are only
             # one line, but when multiline colons can have unexpected effects
-            #print(mt.group(1))
             for m in re.findall('.*:[^:]*$', mt.group(1), flags=re.MULTILINE):
                 split = [m.split(':')[0], ':'.join(m.split(':')[1:])]
                 attr, val = map(str.strip, split)
@@ -86,9 +85,7 @@ class Article:
                 metadata['tag_links'] = self.process_links(metadata['tags'])
             
             if 'series' in metadata:
-                #print(metadata['series'])
                 metadata['series_links'] = self.process_links(metadata['series'])
-            #print(metadata)
 
         return metadata
 
@@ -123,8 +120,8 @@ class Article:
                 v = value if key == 'BulletList' else value[1]
 
                 for item in v:
-                    pos   = item[0]['c'][0][2][0][1].split('-')
-                    start = pos[0][1:]
+                    pos   = item[0]['c'][0][2][0][1].split('@')[-1].split('-')
+                    start = pos[0]
                     end   = pos[-1]
 
                     sl, sc = map(int, start.split(':'))
@@ -144,8 +141,8 @@ class Article:
                         tree[i] = obj
 
             if key == 'Para':
-                start = value[0]['c'][0][2][0][1].split('-')[0][1:]
-                end   = value[-1]['c'][0][2][0][1].split('-')[-1]
+                start = value[0]['c'][0][2][0][1].split('@')[-1].split('-')[0]
+                end   = value[-1]['c'][0][2][0][1].split('@')[-1].split('-')[-1]
 
                 sl, sc = map(int, start.split(':'))
                 el, ec = map(int, end.split(':'))
