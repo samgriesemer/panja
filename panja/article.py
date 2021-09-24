@@ -1,6 +1,7 @@
 import re
 from collections import defaultdict
 from datetime import datetime
+import subprocess as subp
 
 import pypandoc as pp
 import pandocfilters as pf
@@ -9,6 +10,9 @@ import misaka
 from colorama import Fore
 
 from . import utils
+
+# captures base link, anchors, display text; any combo of them
+link_regex = re.compile('\[\[([^\]]*?)(#[^\]]*?)?(?:\|([^\]]*?))?\]\]')
 
 class Article:
     '''
@@ -158,17 +162,14 @@ class Article:
                     if tree.get(i) is None:
                         tree[i] = obj
 
-        cm = pp.convert_file(self.fullpath, format='commonmark+sourcepos', to='json')
+        #cm = pp.convert_file(self.fullpath, format='commonmark+sourcepos', to='json')
+        cm = subp.check_output(["pandoc", "--from", "commonmark+sourcepos", "--to", "json", self.fullpath])
         pf.applyJSONFilters([comp], cm)
 
         return tree
 
     def process_linkdata(self):
-        links = re.finditer(
-            pattern=r'\[\[([^\]`]*)\]\]',
-            string=self.raw_content
-        )
-
+        links = link_regex.finditer(self.raw_content)
         linkdata = defaultdict(list)
 
         for m in links:
@@ -188,6 +189,7 @@ class Article:
                 else:
                     header = context['h']
                     text = context['v']
+            else: continue
            
             linkdata[name].append({
                 'ref':  self,
@@ -200,14 +202,11 @@ class Article:
         return linkdata
 
     def process_links(self, string):
-        links = re.findall(
-            pattern=r'\[\[([^\]`]*)\]\]',
-            string=string
-        )
-
+        links = link_regex.findall(string)
         lcounts = defaultdict(int)
+
         for link in links:
-            l = utils.title_to_fname(link)
+            l = utils.title_to_fname(link[0])
             lcounts[l] += 1
 
         return lcounts
@@ -223,7 +222,6 @@ class Article:
             repl=lambda x: utils.title_to_link(x, path),
             string=string
         )
-
         return nt
 
     def transform_tasks(self, string):
@@ -231,22 +229,48 @@ class Article:
             s = m.group(0)
             if m.group(1) == 'S':
                 s = s.replace(m.group(1), ' ')
-                s = s.replace(m.group(2), '<span style="color:green">'+m.group(2)+'</span>')
+                s = s.replace(m.group(2), '<span style="color:var(--green)">'+m.group(2)+'</span>')
             if m.group(3):
-                s = s.replace(m.group(3), '<span style="color:red">'+m.group(3)+'</span>')
+                s = s.replace(m.group(3), '<span style="color:var(--red)">'+m.group(3)+'</span>')
             if m.group(4) is not None:
                 s = s.replace(m.group(4), '<span class="tight-box">'+m.group(4)+'</span>')    
             s = s.replace(m.group(5), '')
-
             return s
 
         nt = re.sub(
-            pattern=r'\* \[(.)\] (.*?) ?(!{1,3})? ?(\([^\)]*\))?(  #\w{8})',
+            pattern=r'\* \[(.)\] (.*?) ?(!{1,3})? ?(\(\d[^\)]*\))?(  #\w{8})',
             repl=repl,
             string=string
         )
 
         return nt
+
+    def transform_task_headers(self, string):
+        def repl(m):
+            title = m.group(1)
+            body  = m.group(3)
+            s = '<details class="tasks"><summary>{}<hr class="solid"></summary>\n{}\n</details>'.format(title, body)
+            return s
+
+        nt = re.sub(
+            pattern=r'#{1,6} (.*?) \| (.+)\n((?:.+(?:\n|$))*)',
+            repl=repl,
+            string=string
+        )
+
+        return nt
+
+    def conversion_wrapper(self, content, extra_args=None, filters=None):
+        if extra_args is None: extra_args = []
+        if filters is None: filters = []
+
+        cmd = ['pandoc', '--from', 'markdown', '--to', 'html5']
+        cmd += extra_args
+        cmd += [e for f in filters for e in ['-F', f]]
+
+        c = subp.check_output(cmd, text=True, input=content, stderr=subp.DEVNULL)
+        return c
+
 
     def convert_html(self, metamd=None, pdoc_args=None, filters=None, fast=False):
         if metamd is None: metamd = []
@@ -262,6 +286,7 @@ class Article:
         # these should really become pandoc filters, move function pandocfilters filters
         # in regular location; can be location for all future modifiers (like tikz!)
         content = self.transform_links(self.content)
+        content = self.transform_task_headers(content)
         content = self.transform_tasks(content)
 
         try:
@@ -269,9 +294,12 @@ class Article:
                 self.html['content'] = misaka.html(content)
             else:
                 # convert regular file content
-                self.html['content'] = pp.convert_text(content,
-                                                       to='html5',
-                                                       format='md',
+                #self.html['content'] = pp.convert_text(content,
+                                                       #to='html5',
+                                                       #format='md',
+                                                       #extra_args=pdoc_args,
+                                                       #filters=filters)
+                self.html['content'] = self.conversion_wrapper(content,
                                                        extra_args=pdoc_args,
                                                        filters=filters)
         except RuntimeError:
@@ -285,10 +313,12 @@ class Article:
                 if fast:
                     link['html'] = misaka.html(context)
                 else:
-                    link['html'] = pp.convert_text(context,
-                                                   to='html5',
-                                                   format='md',
-                                                   filters=filters)
+                    #link['html'] = pp.convert_text(context,
+                                                   #to='html5',
+                                                   #format='md',
+                                                   #filters=filters)
+                    link['html'] = self.conversion_wrapper(context, 
+                                                           filters=filters)
 
         # render extra metadata components to HTML
         for key in metamd:
@@ -301,10 +331,12 @@ class Article:
                 if fast:
                     html_text = misaka.html(value)
                 else:
-                    html_text = pp.convert_text(value,
-                                                to='html5',
-                                                format='md',
-                                                filters=filters)
+                    #html_text = pp.convert_text(value,
+                                                #to='html5',
+                                                #format='md',
+                                                #filters=filters)
+                    html_text = self.conversion_wrapper(value, 
+                                                        filters=filters)
                 
                 self.html[key] = re.sub(
                     pattern=r'^<p>(.*)</p>$',

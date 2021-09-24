@@ -584,7 +584,8 @@ class Site(object):
                 templates = self.get_dependencies(filename)
                 self.render_templates(templates)
 
-        self.postreload(self)
+        if self.postreload:
+            self.postreload(self)
 
     def __repr__(self):
         return "%s('%s', '%s')" % (type(self).__name__,
