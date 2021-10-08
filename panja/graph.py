@@ -130,8 +130,8 @@ class ArticleGraph:
             self.fgraph[article.name] = {}
 
             for name in cur_article.links:
-                self.bgraph[name].pop(article.name)
-                self.bl_map[name].pop(article.name)
+                self.bgraph[name].pop(article.name, None)
+                self.bl_map[name].pop(article.name, None)
 
             for tag in cur_article.metadata.get('tag_links', []):
                 self.tag_map[tag].remove(article.name)
