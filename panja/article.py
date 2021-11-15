@@ -2,6 +2,7 @@ import re
 from collections import defaultdict
 from datetime import datetime
 import subprocess as subp
+from pathlib import Path
 
 import pypandoc as pp
 import pandocfilters as pf
@@ -90,6 +91,15 @@ class Article:
             
             if 'series' in metadata:
                 metadata['series_links'] = self.process_links(metadata['series'])
+
+            if 'files' in metadata:
+                metadata['files_links'] = self.process_links(metadata['files'])
+
+            public_carousel_html, local_carousel_html, public_files, local_files = self.get_carousels(metadata)
+            metadata['public_carousel_html'] = public_carousel_html
+            metadata['local_carousel_html']  = local_carousel_html
+            metadata['public_files']         = public_files
+            metadata['local_files']          = local_files
 
         return metadata
 
@@ -218,7 +228,7 @@ class Article:
 
     def transform_links(self, string, path=''):
         nt = re.sub(
-            pattern=r'\[\[([^\]`]*)\]\]',
+            pattern=link_regex,
             repl=lambda x: utils.title_to_link(x, path),
             string=string
         )
@@ -259,6 +269,47 @@ class Article:
         )
 
         return nt
+
+    def get_carousels(self, metadata):
+        public_carousel_str = ''
+        local_carousel_str = ''
+        public_files = {}
+        local_files = {}
+
+        for link in metadata.get('files_links', []):
+            try:
+                stem = Path(link).relative_to('docs')
+            except ValueError:
+                print('File attribute link "{}" not properly located'.format(link))
+                continue
+             
+            reg_src = Path('/home/smgr/Documents/notes/images/pdf/', stem)
+            ann_src = Path('/home/smgr/Documents/notes/images/pdf/rm/docs/', stem)
+
+            if reg_src.exists():
+                public_carousel_str += self.carousel_html(str(stem), str(reg_src))
+                public_files[str(stem)] = str(Path('/docs/', stem))
+            if ann_src.exists():
+                name = 'rm/docs/'+str(stem)
+                local_carousel_str += self.carousel_html(name, str(ann_src))
+                local_files[name] = str(Path('/docs/', name))
+
+        note_src = Path('/home/smgr/Documents/notes/images/pdf/rm/', self.name).with_suffix('.pdf')
+        if note_src.exists():
+            name = 'rm/'+self.name+'.pdf'
+            local_carousel_str += self.carousel_html(name, str(note_src))
+            local_files[name] = str(Path('/docs/', self.name))
+
+        return public_carousel_str, local_carousel_str, public_files, local_files
+
+    def carousel_html(self, name, path):
+        outstr = '<div style="display:none;">'
+        outstr += '<div style="font-weight:bold;border-bottom:1px solid;color:black;">{}</div>'.format(name)
+        outstr += '<div class="carousel" data-docsource="{}">'.format(name)
+        for img in sorted(utils.directory_tree(path)):
+            outstr += '<div class="card"><img src="/images/pdf/'+name+'/'+img+'"></div>'
+        outstr += '</div></div>'
+        return outstr
 
     def conversion_wrapper(self, content, extra_args=None, filters=None):
         if extra_args is None: extra_args = []

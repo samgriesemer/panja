@@ -33,8 +33,16 @@ def title_to_fname(title):
 
 def title_to_link(match, path=''):
     '''Return Markdown-style link from file title'''
-    title = match.group(1)
-    return '['+title+']('+path+title_to_fname(title)+')'
+    title  = match.group(1)
+    anchor = match.group(2)
+    desc   = match.group(3)
+
+    if desc: display = desc
+    else:
+        if anchor: display = title+anchor
+        else: display = title
+
+    return '['+display+']('+path+title_to_fname(title)+')'
 
 class TqdmLoggingHandler(logging.Handler):
     def __init__(self, level=logging.NOTSET):
