@@ -303,7 +303,7 @@ class Article:
         return public_carousel_str, local_carousel_str, public_files, local_files
 
     def carousel_html(self, name, path):
-        outstr = '<div style="display:none;">'
+        outstr = '<div class="inner-carousel-wrapper" style="display:none;">'
         outstr += '<div style="font-weight:bold;border-bottom:1px solid;color:black;">{}</div>'.format(name)
         outstr += '<div class="carousel" data-docsource="{}">'.format(name)
         for img in sorted(utils.directory_tree(path)):

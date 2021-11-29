@@ -13,6 +13,7 @@ import sys
 import re
 import shutil
 import warnings
+from pathlib import Path
 
 from colorama import Fore
 from tqdm import tqdm
@@ -474,6 +475,12 @@ class Site(object):
                         path".format(f))
 
             output_location = os.path.join(self.outpath, f)
+            
+            if Path(output_location).exists():
+                if Path(input_location).stat().st_mtime <= Path(output_location).stat().st_mtime:
+                    self.logger.info("Static file %s unchanged, skipping." % f)
+                    continue
+
             self.logger.info("Copying %s to output." % f)
             self._ensure_dir(f)
             shutil.copy2(input_location, output_location)
