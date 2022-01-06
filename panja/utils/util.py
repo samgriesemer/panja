@@ -3,6 +3,7 @@ import shutil
 import sys
 import re
 import logging
+import hashlib
 
 from tqdm import tqdm
 
@@ -43,6 +44,11 @@ def title_to_link(match, path=''):
         else: display = title
 
     return '['+display+']('+path+title_to_fname(title)+')'
+
+def src_hash(module, src, ext=None):
+    if ext is None: ext = ''
+    shash = hashlib.sha1(src.encode(sys.getfilesystemencoding())).hexdigest()
+    return module+shash+ext
 
 class TqdmLoggingHandler(logging.Handler):
     def __init__(self, level=logging.NOTSET):

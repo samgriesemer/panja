@@ -4,7 +4,6 @@ from datetime import datetime
 import subprocess as subp
 from pathlib import Path
 
-import pypandoc as pp
 import pandocfilters as pf
 import misaka
 
@@ -237,9 +236,9 @@ class Article:
     def transform_tasks(self, string):
         def repl(m):
             s = m.group(0)
-            if m.group(1) == 'S':
-                s = s.replace(m.group(1), ' ')
-                s = s.replace(m.group(2), '<span style="color:var(--green)">'+m.group(2)+'</span>')
+            if m.group(1) == '[S]':
+                s = s.replace(m.group(1), '[ ]')
+                s = s.replace(m.group(2), '<span style="background:var(--hl-green)">'+m.group(2)+'</span>')
             if m.group(3):
                 s = s.replace(m.group(3), '<span style="color:var(--red)">'+m.group(3)+'</span>')
             if m.group(4) is not None:
@@ -248,7 +247,7 @@ class Article:
             return s
 
         nt = re.sub(
-            pattern=r'\* \[(.)\] (.*?) ?(!{1,3})? ?(\(\d[^\)]*\))?(  #\w{8})',
+            pattern=r'\* (\[.\]) (.*?) ?(!{1,3})? ?(\(\d[^\)]*\))?(  #\w{8})',
             repl=repl,
             string=string
         )
@@ -266,6 +265,84 @@ class Article:
             pattern=r'#{1,6} (.*?) \| (.+)\n((?:.+(?:\n|$))*)',
             repl=repl,
             string=string
+        )
+
+        return nt
+    
+    def transform_tikz(self, string):
+        '''
+        Transforms raw TikZ to SVG and embeds the link in the Markdown source. If TikZ is
+        standalone, will wrap the resulting SVG in image syntax. If TikZ source is
+        detected in image syntax (enabling convenient captioning), the source will simply
+        be replaced with the filename.
+        '''
+        def repl(m):
+            caption  = m.group(1)
+            tikz_src = m.group(2)
+
+            svg_full_prefix = '/home/smgr/Documents/notes/images/'
+            svg_site_prefix = 'images/'
+
+            # generate stem filename from source hash
+            svg_stem = utils.src_hash('livetex_', tikz_src, '.svg')
+            svg_full_path = str(Path(svg_full_prefix, svg_stem))
+            svg_site_path = str(Path(svg_site_prefix, svg_stem))
+
+            # convert tikz to svg
+            # note: can safely ignore re-render since name is based on source hash
+            if not Path(svg_full_path).exists():
+                print(Fore.YELLOW + 'Rendering TikZ SVG {}'.format(svg_stem))
+                utils.tex.tikz2svg(tikz_src, svg_full_path)
+
+            return '![{}]({})'.format(caption, svg_site_path)
+
+        nt = re.sub(
+            pattern=r'!\[(.*?)\]\(\n?(\\begin{tikzpicture}.*?\\end{tikzpicture})\n?\)',
+            repl=repl,
+            string=string,
+            flags=re.DOTALL
+        )
+
+        return nt
+
+    def transform_pdftex(self, string):
+        '''
+        Transforms .pdf_tex files that are linked within Markdown images
+        '''
+        def repl(m):
+            caption  = m.group(1)
+            texpdf = m.group(2)
+
+            in_full_prefix = '/home/smgr/Documents/notes/'
+            svg_full_prefix = '/home/smgr/Documents/notes/images/'
+            svg_site_prefix = 'images/'
+
+            # generate stem filename from source hash
+            in_full_path = str(Path(in_full_prefix, texpdf))
+            tex_src = ''
+            with open(in_full_path+'.pdf_tex', 'r') as f:
+                tex_src = f.read()
+
+            svg_stem = utils.src_hash('pdftex_', tex_src, '.svg')
+            svg_full_path = str(Path(svg_full_prefix, svg_stem))
+            svg_site_path = str(Path(svg_site_prefix, svg_stem))
+
+            # convert tikz to svg
+            # note: can safely ignore re-render since name is based on source hash
+            if not Path(svg_full_path).exists():
+                print(Fore.YELLOW + 'Rendering PDF TeX {} as {}'.format(texpdf, svg_stem))
+                utils.tex.pdftex2svg(
+                    in_full_path+'.pdf_tex',
+                    in_full_path+'.pdf',
+                    svg_full_path)
+
+            return '![{}]({})'.format(caption, svg_site_path)
+
+        nt = re.sub(
+            pattern=r'!\[(.*?)\]\((.*?)\.pdf_tex\)',
+            repl=repl,
+            string=string,
+            flags=re.DOTALL
         )
 
         return nt
@@ -339,17 +416,14 @@ class Article:
         content = self.transform_links(self.content)
         content = self.transform_task_headers(content)
         content = self.transform_tasks(content)
+        content = self.transform_tikz(content)
+        content = self.transform_pdftex(content)
 
         try:
             if fast:
                 self.html['content'] = misaka.html(content)
             else:
                 # convert regular file content
-                #self.html['content'] = pp.convert_text(content,
-                                                       #to='html5',
-                                                       #format='md',
-                                                       #extra_args=pdoc_args,
-                                                       #filters=filters)
                 self.html['content'] = self.conversion_wrapper(content,
                                                        extra_args=pdoc_args,
                                                        filters=filters)
@@ -364,10 +438,6 @@ class Article:
                 if fast:
                     link['html'] = misaka.html(context)
                 else:
-                    #link['html'] = pp.convert_text(context,
-                                                   #to='html5',
-                                                   #format='md',
-                                                   #filters=filters)
                     link['html'] = self.conversion_wrapper(context, 
                                                            filters=filters)
 
@@ -382,10 +452,6 @@ class Article:
                 if fast:
                     html_text = misaka.html(value)
                 else:
-                    #html_text = pp.convert_text(value,
-                                                #to='html5',
-                                                #format='md',
-                                                #filters=filters)
                     html_text = self.conversion_wrapper(value, 
                                                         filters=filters)
                 

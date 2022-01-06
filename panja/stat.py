@@ -21,6 +21,7 @@ inc_trace = defaultdict(list)
 
 # set large col number to prevent forced nowrap
 html_diff = HtmlDiff(tabsize=4,wrapcolumn=1000)
+link_regex = re.compile(r'\[\[([^\]]*?)(#[^\]]*?)?(?:\|([^\]]*?))?\]\]')
 
 group_size = 16
 wait_group = []
@@ -167,23 +168,28 @@ for fname, datelist in tqdm(inc_trace.items()):
     file_stats = {}
     last_line_count = 0
     last_word_count = 0
+    last_link_count = 0
     for i,fd in enumerate(datelist):
         abs_line_count = len(fd['lines'])
         abs_word_count = len(''.join(fd['lines']).split())
+        abs_link_count = len(link_regex.findall(''.join(fd['lines'])))
 
         diff_line_count = abs_line_count-last_line_count
         diff_word_count = abs_word_count-last_word_count
+        diff_link_count = abs_link_count-last_link_count
         # link_count TBI
 
         stat = {
             'lines': abs_line_count,
             'words': abs_word_count,
+            'links': abs_link_count,
             'files': 0
         }
 
         statd = {
             'lines': diff_line_count,
             'words': diff_word_count,
+            'links': diff_link_count,
             'files': 0
         }
 
@@ -206,6 +212,7 @@ for fname, datelist in tqdm(inc_trace.items()):
 
         last_line_count = abs_line_count
         last_word_count = abs_word_count
+        last_link_count = abs_link_count
     local_stats[fname] = file_stats
 
 
@@ -222,9 +229,11 @@ for i,fpath in tqdm(enumerate(glob.glob(str(Path(backup_location, '*.md'))))):
     lines = get_current_lines(fname)
     temp_line_count = len(lines)
     temp_word_count = len(''.join(lines).split())
+    temp_link_count = len(link_regex.findall(''.join(fd['lines'])))
 
     gstat['-1']['lines'] += temp_line_count
     gstat['-1']['words'] += temp_word_count
+    gstat['-1']['links'] += temp_link_count
     gstat['-1']['files'] += 1
 
 last_date = '-1'
@@ -232,10 +241,12 @@ for date in tqdm(sorted(global_stats.keys())):
     gstat[date]['lines'] = gstat[last_date]['lines']
     gstat[date]['words'] = gstat[last_date]['words']
     gstat[date]['files'] = gstat[last_date]['files']
+    gstat[date]['links'] = gstat[last_date]['links']
     for stat in global_stats[date]:
         gstat[date]['lines'] += stat['lines']
         gstat[date]['words'] += stat['words']
         gstat[date]['files'] += stat['files']
+        gstat[date]['links'] += stat['links']
     last_date = date
 
 
@@ -255,6 +266,7 @@ for date in tqdm(sorted(global_stats.keys())):
     
     #re.split(r'---.*?\+\+\+.*?@@.*?@@',a+a,flags=re.DOTALL)
 
+from panja.cache import Cache
 
 stat_cache = Cache(
     'stat_samg.com_b',
