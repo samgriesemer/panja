@@ -235,6 +235,7 @@ class Article:
 
     def transform_tasks(self, string):
         def repl(m):
+            # probably not the best practice using blanket replace statements
             s = m.group(0)
             if m.group(1) == '[S]':
                 s = s.replace(m.group(1), '[ ]')
@@ -243,11 +244,16 @@ class Article:
                 s = s.replace(m.group(3), '<span style="color:var(--red)">'+m.group(3)+'</span>')
             if m.group(4) is not None:
                 s = s.replace(m.group(4), '<span class="tight-box">'+m.group(4)+'</span>')    
-            s = s.replace(m.group(5), '')
+            if m.group(5) is not None:
+                s = s.replace(
+                        m.group(5),
+                        '<sup><a href="/task-{}">+</a></sup>'.format(m.group(6).replace('  #',''))
+                    )
+            s = s.replace(m.group(6), '')
             return s
 
         nt = re.sub(
-            pattern=r'\* (\[.\]) (.*?) ?(!{1,3})? ?(\(\d[^\)]*\))?(  #\w{8})',
+            pattern=r'\* (\[.\]) (.*?) ?(!{1,3})? ?(\(\d[^\)]*\))? ?(\+\+)?(  #\w{8})',
             repl=repl,
             string=string
         )
