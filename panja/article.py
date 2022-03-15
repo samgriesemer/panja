@@ -13,6 +13,7 @@ from . import utils
 
 # captures base link, anchors, display text; any combo of them
 link_regex = re.compile('\[\[([^\]]*?)(#[^\]]*?)?(?:\|([^\]]*?))?\]\]')
+reflink_regex = re.compile('\[(\w*)\]: (http[^\s]*) ?(?:\(([^\)]*)\))?')
 
 class Article:
     '''
@@ -99,6 +100,9 @@ class Article:
             metadata['local_carousel_html']  = local_carousel_html
             metadata['public_files']         = public_files
             metadata['local_files']          = local_files
+
+            # parse ref links
+            metadata['reflinks'], metadata['sources'] = self.process_reflinks(self.content)
 
         return metadata
 
@@ -224,6 +228,22 @@ class Article:
         self.links    = self.process_links(self.content)
         self.tree     = self.context_tree()
         self.linkdata = self.process_linkdata()
+
+    def process_reflinks(self, string):
+        links = reflink_regex.findall(string)
+        link_iter = reflink_regex.finditer(string)
+
+        raw_reflink = '\n'.join(map(lambda x: x.group(0), link_iter))
+
+        ref_group = []
+        for link in links:
+            ref_group.append('- [{}][{}]'.format(
+                link[2] if link[2] else re.sub(r'^https?:\/\/','',link[1]),
+                link[0],
+            ))
+        ref_group = '\n'.join(ref_group)+'\n\n'+raw_reflink
+
+        return raw_reflink, ref_group
 
     def transform_links(self, string, path=''):
         nt = re.sub(

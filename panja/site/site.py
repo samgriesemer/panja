@@ -260,7 +260,10 @@ class Site(object):
     def templates(self):
         """Generator for templates."""
         for template_name in self.template_names:
-            yield self.get_template(template_name)
+            try:
+                yield self.get_template(template_name)
+            except UnicodeError:
+                self.logger.info(Fore.RED + 'unable to render template {}'.format(template_name) + Fore.RESET)
 
     @property
     def static_names(self):
@@ -274,6 +277,12 @@ class Site(object):
         try:
             return self.env.get_template(template_name)
         except UnicodeDecodeError as e:
+            if template_name.split('.')[-1] == 'pdf':
+                self.logger.info(Fore.RED + 'unable to render template {}'.format(template_name) + Fore.RESET)
+                template = Template('')
+                template.name = template_name
+                template.filename = self.find_searchpath(template_name)
+                return template
             raise UnicodeError('Unable to decode %s: %s' % (template_name, e))
         except TemplateSyntaxError as e:
             if template_name.split('.')[-1] == 'md':
@@ -421,6 +430,7 @@ class Site(object):
         except ValueError:
             if filepath is None:
                 filepath = os.path.join(self.outpath, template.name)
+
             template.stream(**context).dump(filepath, self.encoding)
         else:
             rule(self, template, **context)
