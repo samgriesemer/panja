@@ -14,6 +14,7 @@ from . import utils
 # captures base link, anchors, display text; any combo of them
 link_regex = re.compile('\[\[([^\]]*?)(#[^\]]*?)?(?:\|([^\]]*?))?\]\]')
 reflink_regex = re.compile('\[(\w*)\]: (http[^\s]*) ?(?:\(([^\)]*)\))?')
+heading_regex = re.compile('(#{1,6}) (.*)')
 
 class Article:
     '''
@@ -44,6 +45,7 @@ class Article:
         self.valid = True
         self.verbose = verbose
         self.ctime = datetime.now().timestamp()
+        self.headings = []
 
         # lightweight parsing
         self.metadata = self.process_metadata()
@@ -104,6 +106,10 @@ class Article:
             # parse ref links
             metadata['reflinks'], metadata['sources'] = self.process_reflinks(self.content)
 
+            # parse heading IDs
+            metadata['heading_map'] = self.process_headings(self.content)
+            print(metadata['heading_map'])
+
         return metadata
 
     def context_tree(self):
@@ -131,6 +137,7 @@ class Article:
                             title.append(outer[0]['c'])
                         else:
                             title.append(' ')
+
                 current_header['c'] = ''.join([str(s) for s in title])
 
             if key == 'BulletList' or key == 'OrderedList':
@@ -228,6 +235,7 @@ class Article:
         self.links    = self.process_links(self.content)
         self.tree     = self.context_tree()
         self.linkdata = self.process_linkdata()
+        print(self.headings)
 
     def process_reflinks(self, string):
         links = reflink_regex.findall(string)
@@ -245,10 +253,45 @@ class Article:
 
         return raw_reflink, ref_group
 
-    def transform_links(self, string, path=''):
+    def process_headings(self, string):
+        headings = heading_regex.finditer(string)
+        hmap = {}
+        hset = set()
+        level_stack = [0]
+        hstack = []
+
+        for heading in headings:
+            print('heading: {}'.format(heading))
+            hsize = len(heading.group(1))
+
+            while level_stack[-1] >= hsize:
+                hstack.pop()
+                level_stack.pop()
+
+            hstack.append(heading.group(2))
+            level_stack.append(hsize)
+
+            anchor_str = '#'.join(hstack)
+            parse_target = hstack[-1]
+            parse_target = parse_target.lower().replace(' ', '-')
+            parse_target = re.sub(r'[^\w\s-]','',parse_target)
+            cand_target = parse_target
+            nid = 0
+
+            while cand_target in hset:
+                nid += 1
+                cand_target = parse_target+'-{}'.format(nid)
+
+            hmap[anchor_str] = cand_target
+            hset.add(cand_target)
+
+        return hmap
+        
+
+    def transform_links(self, string, path='', graph=None):
         nt = re.sub(
             pattern=link_regex,
-            repl=lambda x: utils.title_to_link(x, path),
+            repl=lambda x: utils.title_to_link(x, path, graph),
             string=string
         )
         return nt
@@ -426,7 +469,7 @@ class Article:
         return c
 
 
-    def convert_html(self, metamd=None, pdoc_args=None, filters=None, fast=False):
+    def convert_html(self, metamd=None, pdoc_args=None, filters=None, fast=False, graph=None):
         if metamd is None: metamd = []
         if pdoc_args is None: pdoc_args = []
         if filters is None: filters = []
@@ -439,7 +482,7 @@ class Article:
         
         # these should really become pandoc filters, move function pandocfilters filters
         # in regular location; can be location for all future modifiers (like tikz!)
-        content = self.transform_links(self.content)
+        content = self.transform_links(self.content, graph=graph)
         content = self.transform_task_headers(content)
         content = self.transform_tasks(content)
         content = self.transform_tikz(content)
