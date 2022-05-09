@@ -5,6 +5,8 @@ import re
 from collections import defaultdict
 from tqdm import tqdm
 from difflib import unified_diff, HtmlDiff
+from panja.cache import Cache
+
 
 backup_location = '/media/smgr/data/backups/arch_incremental/notes-rdiff/'
 increment_subdir = 'rdiff-backup-data/increments'
@@ -22,6 +24,14 @@ inc_trace = defaultdict(list)
 # set large col number to prevent forced nowrap
 html_diff = HtmlDiff(tabsize=4,wrapcolumn=1000)
 link_regex = re.compile(r'\[\[([^\]]*?)(#[^\]]*?)?(?:\|([^\]]*?))?\]\]')
+
+# incorporate archive stats
+ax_stat_cache = Cache(
+    'stat_samg.com_b_back',
+    '/home/smgr/.cache/panja/',
+)
+ax_stat = ax_stat_cache.load()
+inc_trace = ax_stat['inc_trace']
 
 group_size = 16
 wait_group = []
@@ -266,18 +276,22 @@ for date in tqdm(sorted(global_stats.keys())):
     
     #re.split(r'---.*?\+\+\+.*?@@.*?@@',a+a,flags=re.DOTALL)
 
-from panja.cache import Cache
 
 stat_cache = Cache(
     'stat_samg.com_b',
     '/home/smgr/.cache/panja/',
 )
 
+#gstat = {**ax_stat['gstat'], **gstat}
+#global_stats = {**ax_stat['global_stats'], **global_stats}
+#local_stats = {**ax_stat['local_stats'], **local_stats}
+#inc_trace = {**ax_stat['inc_trace'], **inc_trace}
+
 obj = {
-    'gstat': gstat,
+    'gstat':        gstat,
     'global_stats': global_stats,
-    'local_stats': local_stats,
-    'inc_trace': inc_trace
+    'local_stats':  local_stats,
+    'inc_trace':    inc_trace,
 }
 
 stat_cache.write(obj)

@@ -61,15 +61,15 @@ def parse_anchor(anchor_str, hmap=None):
     nested subsection names that we'd be expecting to use as anchors to the flat anchor
     name that Pandoc uses in the TOC. But this solution should suffice for now.
     '''
-    if hmap is not None:
+    if hmap is not None and anchor_str[1:] in hmap:
         return '#'+hmap[anchor_str[1:]]
 
     m = re.findall(r'#[^#]*$', anchor_str)
     tail = m[-1] if m else ''
     tail = tail.lower().replace(' ', '-')
     tail = re.sub(r'[^\w\s-]','',tail)
+    tail = '#'+tail if tail else tail
     return tail
-
 
 def src_hash(module, src, ext=None):
     if ext is None: ext = ''
