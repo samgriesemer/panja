@@ -108,7 +108,6 @@ class Article:
 
             # parse heading IDs
             metadata['heading_map'] = self.process_headings(self.content)
-            print(metadata['heading_map'])
 
         return metadata
 
@@ -144,6 +143,10 @@ class Article:
                 v = value if key == 'BulletList' else value[1]
 
                 for item in v:
+                    if not item:
+                        print(Fore.YELLOW + '\n[empty list item]' + Fore.RESET)
+                        continue
+
                     pos   = item[0]['c'][0][2][0][1].split('@')[-1].split('-')
                     start = pos[0]
                     end   = pos[-1]
@@ -235,7 +238,6 @@ class Article:
         self.links    = self.process_links(self.content)
         self.tree     = self.context_tree()
         self.linkdata = self.process_linkdata()
-        print(self.headings)
 
     def process_reflinks(self, string):
         links = reflink_regex.findall(string)
@@ -249,9 +251,10 @@ class Article:
                 link[2] if link[2] else re.sub(r'^https?:\/\/','',link[1]),
                 link[0],
             ))
+
         ref_group = '\n'.join(ref_group)+'\n\n'+raw_reflink
 
-        return raw_reflink, ref_group
+        return raw_reflink, ref_group.strip()
 
     def process_headings(self, string):
         headings = heading_regex.finditer(string)
@@ -261,7 +264,6 @@ class Article:
         hstack = []
 
         for heading in headings:
-            print('heading: {}'.format(heading))
             hsize = len(heading.group(1))
 
             while level_stack[-1] >= hsize:
@@ -411,7 +413,7 @@ class Article:
             pattern=r'!\[(.*?)\]\((.*?)\.pdf_tex\)',
             repl=repl,
             string=string,
-            flags=re.DOTALL
+            #flags=re.DOTALL
         )
 
         return nt
@@ -428,6 +430,9 @@ class Article:
             except ValueError:
                 print('File attribute link "{}" not properly located'.format(link))
                 continue
+
+            if Path('/home/smgr/Documents/notes/docs',stem).exists() and stem.suffix != '.pdf':
+                public_files[str(stem)] = str(Path('/docs/', stem))
              
             reg_src = Path('/home/smgr/Documents/notes/images/pdf/', stem)
             ann_src = Path('/home/smgr/Documents/notes/images/pdf/rm/docs/', stem)
@@ -440,11 +445,11 @@ class Article:
                 local_carousel_str += self.carousel_html(name, str(ann_src))
                 local_files[name] = str(Path('/docs/', name))
 
-        note_src = Path('/home/smgr/Documents/notes/images/pdf/rm/', self.name).with_suffix('.pdf')
+        note_src = Path('/home/smgr/Documents/notes/images/pdf/rm/', self.name+'.pdf')
         if note_src.exists():
             name = 'rm/'+self.name+'.pdf'
             local_carousel_str += self.carousel_html(name, str(note_src))
-            local_files[name] = str(Path('/docs/', self.name))
+            local_files[name] = str(Path('/docs/', name))
 
         return public_carousel_str, local_carousel_str, public_files, local_files
 
@@ -527,5 +532,6 @@ class Article:
                 self.html[key] = re.sub(
                     pattern=r'^<p>(.*)</p>$',
                     repl=lambda m: m.group(1),
-                    string=html_text
+                    string=html_text,
+                    flags=re.DOTALL
                 )
