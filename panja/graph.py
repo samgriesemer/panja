@@ -16,6 +16,7 @@ class ArticleGraph:
 
         # global metadata indexes
         self.tag_map = defaultdict(set)
+        self.tag_fgraph = defaultdict(lambda: defaultdict(int))
         self.series_map = defaultdict(set)
         self.bl_map = defaultdict(lambda: defaultdict(list))
         self.bl_head = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
@@ -78,6 +79,27 @@ class ArticleGraph:
 
         return {'nodes': nodes, 'links': edges}
 
+    def get_tag_edge_list(self):
+        nodes = []
+        edges = []
+        for tname, pairs in self.tag_fgraph.items():
+            data = {
+                'name': tname,
+                'link': tname,
+                'title': tname,
+                'num_links': len(self.tag_map[tname])
+            }
+            nodes.append(data)
+
+            for target, val in pairs.items():
+                edges.append({
+                    'source': tname,
+                    'target': target,
+                    'value': val
+                })
+
+        return {'nodes': nodes, 'links': edges}
+
     def get_subgraph(self, name):
         article = self.article_map[name]
         data = {
@@ -128,7 +150,6 @@ class ArticleGraph:
         if article.name in self.article_map:
             cur_article = self.article_map[article.name]
             self.fgraph[article.name] = {}
-
             for name in cur_article.links:
                 self.bgraph[name].pop(article.name, None)
                 self.bl_map[name].pop(article.name, None)
@@ -154,8 +175,11 @@ class ArticleGraph:
             
     def process_tags(self, article):
         if 'tag_links' in article.metadata:
-            for tag in article.metadata['tag_links']:
+            tag_links = list(article.metadata['tag_links'].keys())
+            for i, tag in enumerate(tag_links):
                 self.tag_map[tag].add(article.name)
+                for pair in (tag_links[:i]+tag_links[i+1:]):
+                    self.tag_fgraph[tag][pair] += 1
 
     def process_series(self, article):
         if 'series_links' in article.metadata:
