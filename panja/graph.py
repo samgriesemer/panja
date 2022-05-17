@@ -1,5 +1,8 @@
 import json
 from collections import defaultdict
+from datetime import datetime
+
+from . import filedata
 
 class ArticleGraph:
     def __init__(self):
@@ -167,6 +170,7 @@ class ArticleGraph:
         self.process_tags(article)
         self.process_series(article)
         self.process_backlinks(article)
+        self.process_data(article)
 
     def process_links(self, article):
         for link, count in article.links.items():
@@ -193,3 +197,15 @@ class ArticleGraph:
 
             for link in data:
                 self.bl_head[name][link['header']][article.name] += [link]
+
+    def process_data(self, article):
+        if not (article.metadata.get('type') == 'journal' and 
+                article.metadata.get('filedata')):
+            return
+
+        date = datetime.strptime(article.name, '%Y-%m-%d')
+        datestr = date.isoformat()
+        triples = [(datestr,)+e for e in
+                   filedata.dict2keys(article.metadata['filedata'])]
+        print('Inserting journal data for {}'.format(article.name))
+        filedata.bulk_insert(triples)

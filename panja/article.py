@@ -3,6 +3,7 @@ from collections import defaultdict
 from datetime import datetime
 import subprocess as subp
 from pathlib import Path
+import yaml
 
 import pandocfilters as pf
 import misaka
@@ -15,6 +16,7 @@ from . import utils
 link_regex = re.compile('\[\[([^\]]*?)(#[^\]]*?)?(?:\|([^\]]*?))?\]\]')
 reflink_regex = re.compile('\[(\w*)\]: (http[^\s]*) ?(?:\(([^\)]*)\))?')
 heading_regex = re.compile('(#{1,6}) (.*)')
+data_regex = re.compile('# Data\s+```yaml\s([\s\S]*?)\s+```')
 
 class Article:
     '''
@@ -53,7 +55,7 @@ class Article:
         self.tree = {}
         self.linkdata = {}
 
-            # could build in backlink processing to a process_links-like function
+        # could build in backlink processing to a process_links-like function
 
     def process_metadata(self):
         with open(self.fullpath, 'r') as f:
@@ -104,10 +106,13 @@ class Article:
             metadata['local_files']          = local_files
 
             # parse ref links
-            metadata['reflinks'], metadata['sources'] = self.process_reflinks(self.content)
+            metadata['reflinks'], metadata['sources'], metadata['reflink_list'] = self.process_reflinks(self.content)
 
             # parse heading IDs
             metadata['heading_map'] = self.process_headings(self.content)
+
+            # process data
+            metadata['filedata'] = self.process_data(self.content)
 
         return metadata
 
@@ -246,15 +251,19 @@ class Article:
         raw_reflink = '\n'.join(map(lambda x: x.group(0), link_iter))
 
         ref_group = []
+        triplets = []
         for link in links:
+            name = link[2] if link[2] else re.sub(r'^https?:\/\/','',link[1])
             ref_group.append('- [{}][{}]'.format(
-                link[2] if link[2] else re.sub(r'^https?:\/\/','',link[1]),
+                name,
                 link[0],
             ))
+            triplets.append((link[0], link[1], name))
 
         ref_group = '\n'.join(ref_group)+'\n\n'+raw_reflink
 
-        return raw_reflink, ref_group.strip()
+
+        return raw_reflink, ref_group.strip(), triplets
 
     def process_headings(self, string):
         headings = heading_regex.finditer(string)
@@ -288,8 +297,18 @@ class Article:
             hset.add(cand_target)
 
         return hmap
-        
 
+    def process_data(self, string):
+        yamld = data_regex.findall(string)
+        if yamld:
+            try:
+                parsed_yaml = yaml.safe_load(yamld[0])
+            except yaml.YAMLError as e:
+                print('YAML parse error in {}'.format(self.name))
+                return None
+            return parsed_yaml
+        return None
+        
     def transform_links(self, string, path='', graph=None):
         nt = re.sub(
             pattern=link_regex,
@@ -353,9 +372,15 @@ class Article:
 
             svg_full_prefix = '/home/smgr/Documents/notes/images/'
             svg_site_prefix = 'images/'
+            hash_src = tikz_src
+
+            data_dir = '/home/smgr/Documents/notes/data'
+            if hash_src.startswith('\\pgfplotstable'):
+                hash_src += ''.join([Path(data_dir, f).open().read() 
+                                     for f in utils.directory_tree(data_dir)])
 
             # generate stem filename from source hash
-            svg_stem = utils.src_hash('livetex_', tikz_src, '.svg')
+            svg_stem = utils.src_hash('livetex_', hash_src, '.svg')
             svg_full_path = str(Path(svg_full_prefix, svg_stem))
             svg_site_path = str(Path(svg_site_prefix, svg_stem))
 
@@ -368,9 +393,18 @@ class Article:
             return '![{}]({})'.format(caption, svg_site_path)
 
         nt = re.sub(
-            pattern=r'!\[(.*?)\]\(\n?(\\begin{tikzpicture}.*?\\end{tikzpicture})\n?\)',
+            pattern=r'!\[(.*?)\]\(\s*(\\begin{tikzpicture}.*?\\end{tikzpicture})\s*\)',
             repl=repl,
             string=string,
+            flags=re.DOTALL
+        )
+        
+        # try rendering anything(?) with a backslash in the caption
+        # space, sufficiently rare; will reconsider on clash
+        nt = re.sub(
+            pattern=r'!\[(.*?)\]\(\s*(\\.*?)\s*\)',
+            repl=repl,
+            string=nt,
             flags=re.DOTALL
         )
 
@@ -472,7 +506,6 @@ class Article:
 
         c = subp.check_output(cmd, text=True, input=content, stderr=subp.DEVNULL)
         return c
-
 
     def convert_html(self, metamd=None, pdoc_args=None, filters=None, fast=False, graph=None):
         if metamd is None: metamd = []

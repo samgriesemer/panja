@@ -28,6 +28,7 @@ def standalone2pdf(instr, outfile, preamble=None, extra_files=None):
             shutil.copy(file, tmpdir)
 
     os.chdir(tmpdir)
+    shutil.copytree('/home/smgr/Documents/notes/data', str(Path(tmpdir,'data')))
     
     with open('stal.tex', 'w') as f:
         f.write("""\\documentclass{standalone}
