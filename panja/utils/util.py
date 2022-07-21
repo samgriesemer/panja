@@ -4,6 +4,7 @@ import sys
 import re
 import logging
 import hashlib
+from pathlib import Path
 
 from tqdm import tqdm
 
@@ -38,18 +39,28 @@ def title_to_link(match, path='', graph=None):
     anchor = match.group(2) if match.group(2) else ''
     desc   = match.group(3) if match.group(3) else ''
 
-    if desc: display = desc
+    if desc:
+        display = desc
     else:
         if anchor:
             display = title + anchor.replace('#','<span style="color:rgba(var(--violet-rgb),1.0)">§</span>')
-        else: display = title
+        else:
+            display = title
 
     article_name = title_to_fname(title)
     if graph and graph.get_article(article_name):
-        return '['+display+']('+path+article_name+parse_anchor(anchor,
-                graph.get_article(article_name).metadata.get('heading_map'))+')'
+        link_txt = '['+display+']('+str(Path('/',path,article_name+parse_anchor(anchor,
+                graph.get_article(article_name).metadata.get('heading_map'))))+')'
     else:
-        return '['+display+']('+path+article_name+parse_anchor(anchor)+')'
+        link_txt = '['+display+']('+str(Path('/',path,article_name+parse_anchor(anchor)))+')'
+
+    # button experiment
+    link_txt +=  '''<button 
+                        class='arrow ssrc'
+                        data-docsource="{}">←
+                    </button>'''.format(str(Path('/',path,'simple',article_name)))
+
+    return link_txt
 
 def parse_anchor(anchor_str, hmap=None):
     '''

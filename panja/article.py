@@ -10,11 +10,12 @@ import misaka
 
 from colorama import Fore
 
+from . import task
 from . import utils
 
 # captures base link, anchors, display text; any combo of them
 link_regex = re.compile('\[\[([^\]]*?)(#[^\]]*?)?(?:\|([^\]]*?))?\]\]')
-reflink_regex = re.compile('\[(\w*)\]: (http[^\s]*) ?(?:\(([^\)]*)\))?')
+reflink_regex = re.compile('\[(\w*)\]: (http[^\s]*) ?(?:\(([^\)]*)\))?(?:"([^"]*)")?')
 heading_regex = re.compile('(#{1,6}) (.*)')
 data_regex = re.compile('# Data\s+```yaml\s([\s\S]*?)\s+```')
 
@@ -65,7 +66,8 @@ class Article:
             f.seek(0)
             self.raw_lines = f.readlines()
 
-            metadata = {}
+            metadata = {'name':self.name}
+            #print(metadata)
             mt = re.match('---\n(.*?)\n(---|\.\.\.)', ft, flags=re.DOTALL)
 
             if mt is None:
@@ -113,6 +115,20 @@ class Article:
 
             # process data
             metadata['filedata'] = self.process_data(self.content)
+
+            # task groups (for gantt primarily)
+            metadata['task_groups'], metadata['task_list'] = self.process_task_groups(self.content)
+
+            if metadata['task_groups']:
+                metadata['task_gantt'] = task.taskdict_to_gantt_raw({
+                    section: task.get_tasks_from_ids(tasks)
+                    for section, tasks in metadata['task_groups'].items()
+                }, 'Task Gantt')
+
+                metadata['task_comp'] = ''.join([
+                    self.transform_task_headers(self.transform_tasks(m), op=True)
+                    for m in metadata['task_list']
+                ])
 
         return metadata
 
@@ -261,8 +277,6 @@ class Article:
             triplets.append((link[0], link[1], name))
 
         ref_group = '\n'.join(ref_group)+'\n\n'+raw_reflink
-
-
         return raw_reflink, ref_group.strip(), triplets
 
     def process_headings(self, string):
@@ -308,7 +322,23 @@ class Article:
                 return None
             return parsed_yaml
         return None
+
+    def process_task_groups(self, string):
+        section_regex = re.compile(r'#{1,6} (.*?) \| (.+)\n((?:.+(?:\n|$))*)')
+        task_regex = re.compile(r'\* (\[.\]) (.*?) ?(!{1,3})? ?(\(\d[^\)]*\))? ?(\+\+)?  #(\w{8})')
         
+        section_dict = {}
+        section_list = []
+        for section in section_regex.finditer(string):
+            section_head = section.group(1)
+            section_body = section.group(3)
+            task_list = [task.group(6) for task in task_regex.finditer(section_body)]
+            section_dict[section_head] = task_list
+            section_list.append(section.group(0))
+
+        return section_dict, section_list
+        
+
     def transform_links(self, string, path='', graph=None):
         nt = re.sub(
             pattern=link_regex,
@@ -316,6 +346,7 @@ class Article:
             string=string
         )
         return nt
+
 
     def transform_tasks(self, string):
         def repl(m):
@@ -329,9 +360,11 @@ class Article:
             if m.group(4) is not None:
                 s = s.replace(m.group(4), '<span class="tight-box">'+m.group(4)+'</span>')    
             if m.group(5) is not None:
+                tasklinks = '<button class="arrow ssrc" data-docsource="/simple/task-{id}">←</button>' + \
+                            '<sup><a href="/task-{id}">+</a></sup>'
                 s = s.replace(
                         m.group(5),
-                        '<sup><a href="/task-{}">+</a></sup>'.format(m.group(6).replace('  #',''))
+                        tasklinks.format(id=m.group(6).replace('  #',''))
                     )
             s = s.replace(m.group(6), '')
             return s
@@ -344,16 +377,31 @@ class Article:
 
         return nt
 
-    def transform_task_headers(self, string):
+    def transform_task_headers(self, string, op=False, remove=False):
         def repl(m):
             title = m.group(1)
             body  = m.group(3)
-            s = '<details class="tasks"><summary>{}<hr class="solid"></summary>\n{}\n</details>'.format(title, body)
+            opn   = 'open' if op else ''
+            #gantt = task.taskdict_to_gantt_raw({
+            #    title:
+            #    task.get_tasks_from_ids(self.metadata['task_groups'].get(title))
+            #})
+            s = '<details class="tasks" {opn}>' + \
+                    '<summary>{}</summary>' + \
+                    '\n{}\n' + \
+                '</details>'.format()
+                #   '<details>' + \
+                #       '<summary>Gantt view</summary>\n{gantt}\n' + \
+                #   '</details>' + \
+
+            #s = s.format(title, body, gantt=gantt)
+            s = s.format(title, body, opn=opn)
+            #s = '<details class="tasks"><summary>{}<hr class="solid"></summary>\n{}\n</details>'.format(title, body)
             return s
 
         nt = re.sub(
             pattern=r'#{1,6} (.*?) \| (.+)\n((?:.+(?:\n|$))*)',
-            repl=repl,
+            repl=repl if not remove else '',
             string=string
         )
 
@@ -465,7 +513,8 @@ class Article:
                 print('File attribute link "{}" not properly located'.format(link))
                 continue
 
-            if Path('/home/smgr/Documents/notes/docs',stem).exists() and stem.suffix != '.pdf':
+            if Path('/home/smgr/Documents/notes/docs',stem).exists():
+            #and stem.suffix != '.pdf':
                 public_files[str(stem)] = str(Path('/docs/', stem))
              
             reg_src = Path('/home/smgr/Documents/notes/images/pdf/', stem)
@@ -473,7 +522,7 @@ class Article:
 
             if reg_src.exists():
                 public_carousel_str += self.carousel_html(str(stem), str(reg_src))
-                public_files[str(stem)] = str(Path('/docs/', stem))
+                #public_files[str(stem)] = str(Path('/docs/', stem))
             if ann_src.exists():
                 name = 'rm/docs/'+str(stem)
                 local_carousel_str += self.carousel_html(name, str(ann_src))
@@ -521,7 +570,7 @@ class Article:
         # these should really become pandoc filters, move function pandocfilters filters
         # in regular location; can be location for all future modifiers (like tikz!)
         content = self.transform_links(self.content, graph=graph)
-        content = self.transform_task_headers(content)
+        content = self.transform_task_headers(content, remove=True)
         content = self.transform_tasks(content)
         content = self.transform_tikz(content)
         content = self.transform_pdftex(content)

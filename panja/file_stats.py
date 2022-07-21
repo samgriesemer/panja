@@ -7,6 +7,7 @@ from tqdm import tqdm
 from difflib import unified_diff, HtmlDiff
 from datetime import datetime
 from panja.cache import Cache
+from panja.article import Article
 
 from typing import Optional
 
@@ -44,6 +45,7 @@ class IncrementFile:
         self.restore_path = None
         self.lines        = []
         self.stats        = {}
+        self.wlinks       = {}
 
     def restore(self, tmp_path):
         # skip restore for missing (we know the outcome) and static (where a
@@ -87,6 +89,7 @@ class IncrementFile:
             'headings' : len(self.heading_regex.findall(lstr)),
             'files' : 0 if self.event == 'missing' else 1,
         })
+        self.wlinks = Article.process_links(None, lstr)
 
 
 class IncrementDiff:
@@ -117,6 +120,7 @@ class IncrementDiff:
         self.diff_table = ''
         self.date       = inc_pre.date
         self.stats      = {}
+        self.wlinks     = {}
 
     def compute_diff_text(self):
         self.diff_text = ''.join(unified_diff(
@@ -143,6 +147,10 @@ class IncrementDiff:
         self.stats.update({
             k: v-self.inc_pre.stats[k]
             for k,v in self.inc_post.stats.items()
+        })
+        self.wlinks.update({
+            k: v-self.inc_pre.wlinks[k]
+            for k,v in self.inc_post.wlinks.items()
         })
 
 
@@ -171,7 +179,8 @@ class DiffStat:
         self.dated_diffs = defaultdict(list)
 
         # dated absolute stats on per-file basis
-        self.local_stats  = defaultdict(dict)
+        self.local_stats       = defaultdict(dict)
+        self.local_inter_stats = defaultdict(dict)
         
         # dated global system stats
         self.global_stats = defaultdict(lambda: defaultdict(int))
@@ -181,6 +190,7 @@ class DiffStat:
         # interest can just be plucked out and summed up together as
         # needed to get accurate stats while flattening all dates
         self.file_traces = defaultdict(dict)
+        self.link_traces = defaultdict(dict)
         
         # create temp restore dir if needed
         self.tmp_path.mkdir(exist_ok=True)
@@ -265,11 +275,15 @@ class DiffStat:
             # to tell us stats happening _after_ the diff there. so we assign the next
             # stats in the chain to that last date
             last_date = '-1'
+            difflist[0].compute_stats()
             self.file_traces[fname]['-1'] = difflist[0].inc_pre.stats
+            self.link_traces[fname]['-1'] = difflist[0].inc_pre.wlinks
+
             for i, diff in enumerate(difflist):
                 diff.compute_stats()
                 self.local_stats[fname][last_date] = diff.inc_pre.stats
                 self.file_traces[fname][diff.date] = diff.stats
+                self.link_traces[fname][diff.date] = diff.wlinks
                 self.dated_diffs[diff.date].append(diff)
                 last_date = diff.date
                 
@@ -316,6 +330,7 @@ class DiffStat:
 
             self.local_stats[fname]['-1'] = bfile.stats
             self.file_traces[fname]['-1'] = bfile.stats
+            self.link_traces[fname]['-1'] = bfile.wlinks
 
             self.global_stats['-1'] = {
                 k: self.global_stats['-1'][k]+v
@@ -344,6 +359,22 @@ class DiffStat:
         # timing
         self.last_updated = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
+    def compute_inter_stats(self):
+        for fname in tqdm(self.link_traces.keys(),
+                          desc='compute local inter file stats'):
+            self.local_inter_stats[fname] = self.stitch_traces([
+                { date:{'linked_to':links.get(fname,0)} for date, links in trace.items() if fname in links }
+                for trace in self.link_traces.values()
+            ])
+        #full_trace = self.stitch_traces(list(self.link_traces.values()))
+        #for date, stats in tqdm(full_trace.items(),
+        #                        desc='compute local inter file stats'):
+        #    for fname, count in stats.items():
+        #        self.local_inter_stats[fname][date] = {
+        #            'linked_to': stats.get(fname,0)
+        #        }
+
+
     @staticmethod
     def stitch_traces(trace_list):
         '''
@@ -361,10 +392,12 @@ class DiffStat:
         for date in sorted(datediff.keys()):
             timeline[date] = timeline[last_date]
             for stat in datediff[date]:
-                timeline[date] = {
-                    k: timeline[date][k]+v
+                temp = {**timeline[date]}
+                temp.update({
+                    k: timeline[date].get(k,0)+v
                     for k,v in stat.items()
-                }
+                })
+                timeline[date] = temp
             last_date = date
 
         return timeline
@@ -384,6 +417,7 @@ if __name__ == '__main__':
     )
     stats.process_increments()
     stats.compute_stats()
+    stats.compute_inter_stats()
 
     stats_cache = Cache(
         'newstat_samg.com',
