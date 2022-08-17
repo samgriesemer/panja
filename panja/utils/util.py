@@ -1,12 +1,14 @@
 import os
 import shutil
+import subprocess
 import sys
 import re
 import logging
 import hashlib
 from pathlib import Path
+from colorama import Fore
+import tqdm
 
-from tqdm import tqdm
 
 def copy_file(ipath, opath):
     shutil.copy2(ipath, opath)
@@ -48,17 +50,21 @@ def title_to_link(match, path='', graph=None):
             display = title
 
     article_name = title_to_fname(title)
+    pdf = Path(article_name).suffix == '.pdf'
     if graph and graph.get_article(article_name):
         link_txt = '['+display+']('+str(Path('/',path,article_name+parse_anchor(anchor,
                 graph.get_article(article_name).metadata.get('heading_map'))))+')'
+    elif pdf:
+        link_txt = '['+display+']('+str(Path('/pdf.html?file=',article_name))+')'
     else:
         link_txt = '['+display+']('+str(Path('/',path,article_name+parse_anchor(anchor)))+')'
 
     # button experiment
+    simple = not (pdf or path)
     link_txt +=  '''<button 
                         class='arrow ssrc'
                         data-docsource="{}">←
-                    </button>'''.format(str(Path('/',path,'simple',article_name)))
+                    </button>'''.format(str(Path('/',path,'simple' if simple else '',article_name)))
 
     return link_txt
 
@@ -82,19 +88,58 @@ def parse_anchor(anchor_str, hmap=None):
     tail = '#'+tail if tail else tail
     return tail
 
+def pdf_preview(pdf_path, img_path, only_mod=True):
+    pdf_path = Path(pdf_path)
+    img_path = Path(img_path)
+    
+    # only generate preview if needed
+    if only_mod:
+        if img_path.exists() and os.listdir(str(img_path)) != []:
+            for file in os.listdir(str(img_path)):
+                if Path(img_path,file).stat().st_mtime < pdf_path.stat().st_mtime:
+                    break
+                # all conditions met: non-empty, existing img path with all rendered
+                # images at least as recent as the PDF file
+                return False
+        
+        
+    if img_path.exists(): shutil.rmtree(img_path)
+    img_path.mkdir(parents=True, exist_ok=True)
+    subprocess.run(['pdftoppm',pdf_path,str(Path(img_path,'img')),'-png','-progress','-l','50'])
+
+
 def src_hash(module, src, ext=None):
     if ext is None: ext = ''
     shash = hashlib.sha1(src.encode(sys.getfilesystemencoding())).hexdigest()
     return module+shash+ext
 
-class TqdmLoggingHandler(logging.Handler):
+def color_str(str, fore_color):
+    return fore_color + str + Fore.RESET
+
+def bs(arr, t):
+    if len(arr) == 0: return 0
+    if len(arr) == 1:
+        if t > arr[0]: return 1
+        else: return 0
+
+    mid = len(arr) // 2
+    if arr[mid] == t:
+        return mid
+    elif t > arr[mid]:
+        return mid+bs(arr[mid:],t)
+    else:
+        return bs(arr[:mid],t)
+
+#class TqdmLoggingHandler(logging.Handler):
+class TqdmLoggingHandler(logging.StreamHandler):
     def __init__(self, level=logging.NOTSET):
         super().__init__(level)
 
     def emit(self, record):
         try:
             msg = self.format(record)
-            tqdm.write(msg)
+            #tqdm.tqdm.write(msg)
+            tqdm.tqdm.write(msg, end=self.terminator)
             self.flush()
         except (KeyboardInterrupt, SystemExit):
             raise

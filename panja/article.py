@@ -16,6 +16,7 @@ from . import utils
 # captures base link, anchors, display text; any combo of them
 link_regex = re.compile('\[\[([^\]]*?)(#[^\]]*?)?(?:\|([^\]]*?))?\]\]')
 reflink_regex = re.compile('\[(\w*)\]: (http[^\s]*) ?(?:\(([^\)]*)\))?(?:"([^"]*)")?')
+bookmark_regex = re.compile('\[([a-zA-Z]{1,2})\]: (http[^\s]*) ?(?:\(([^\)]*)\))?(?:"([^"]*)")?')
 heading_regex = re.compile('(#{1,6}) (.*)')
 data_regex = re.compile('# Data\s+```yaml\s([\s\S]*?)\s+```')
 
@@ -44,6 +45,7 @@ class Article:
         self.html = {}
         self.raw_content = ''
         self.raw_lines = []
+        self.raw_metadata = ''
         self.content = ''
         self.valid = True
         self.verbose = verbose
@@ -61,13 +63,11 @@ class Article:
     def process_metadata(self):
         with open(self.fullpath, 'r') as f:
             ft = f.read()
-            self.raw_content = ft
-
             f.seek(0)
-            self.raw_lines = f.readlines()
+            self.raw_content = ft
+            self.raw_lines   = f.readlines()
 
             metadata = {'name':self.name}
-            #print(metadata)
             mt = re.match('---\n(.*?)\n(---|\.\.\.)', ft, flags=re.DOTALL)
 
             if mt is None:
@@ -79,6 +79,7 @@ class Article:
 
                 return metadata
 
+            self.raw_metadata = mt.group(0)
             self.content = ft.replace(mt.group(0), '')
             #for line in mt.group(1).split('\n'):
                 #split = [line.split(':')[0], ':'.join(line.split(':')[1:])]
@@ -109,12 +110,27 @@ class Article:
 
             # parse ref links
             metadata['reflinks'], metadata['sources'], metadata['reflink_list'] = self.process_reflinks(self.content)
+            metadata['bookmarks'], _, metadata['bookmark_list'] = self.process_bookmarks(self.content)
 
             # parse heading IDs
             metadata['heading_map'] = self.process_headings(self.content)
 
             # process data
             metadata['filedata'] = self.process_data(self.content)
+
+            # process data
+            metadata['citedata'] = self.process_bibdata(
+                metadata.get('source'),
+                metadata.get('citekey'),
+                metadata.get('url'),
+            )
+            metadata['bibtex'] = metadata['citedata'].get('bibtex','')
+            metadata['bibtex_quote'] = '```\n{}\n```'.format(metadata['bibtex'])
+
+            if metadata.get('citekey'):
+                metadata['citegen'] = '<b>[inline]</b> @{}'.format(metadata['citekey'])
+            elif metadata['citedata'].get('citekey'):
+                metadata['citegen'] = '<b>[inline]</b> @{}'.format(metadata['citedata']['citekey'])
 
             # task groups (for gantt primarily)
             metadata['task_groups'], metadata['task_list'] = self.process_task_groups(self.content)
@@ -212,20 +228,26 @@ class Article:
 
         return tree
 
-    def process_linkdata(self):
-        links = link_regex.finditer(self.raw_content)
+    def process_linkdata(self, string, offset=0):
+        '''
+        Offset parameter to allow correction for strings that do not match
+        the content the self.tree is based on. Line numbers need to be shifted
+        in order for matches to align on proper lines. Mainly for metadata restriction
+        currently
+        '''
+        links = link_regex.finditer(string)
         linkdata = defaultdict(list)
 
         for m in links:
             # positional processing
             start = m.start()
-            line = self.raw_content.count('\n', 0, start) +1
-            col = start - self.raw_content.rfind('\n', 0, start)
+            line = string.count('\n', 0, start) +1
+            col = start - string.rfind('\n', 0, start)
             name = utils.title_to_fname(m.group(1))
 
             text = '(will be removed)'
             header = ''
-            context = self.tree.get(line, '')
+            context = self.tree.get(line+offset, '')
             if context:
                 if context.get('p'):
                     header = context['p']['h']
@@ -258,7 +280,7 @@ class Article:
     def process_structure(self):
         self.links    = self.process_links(self.content)
         self.tree     = self.context_tree()
-        self.linkdata = self.process_linkdata()
+        self.linkdata = self.process_linkdata(self.content, self.raw_metadata.count('\n'))
 
     def process_reflinks(self, string):
         links = reflink_regex.findall(string)
@@ -278,6 +300,27 @@ class Article:
 
         ref_group = '\n'.join(ref_group)+'\n\n'+raw_reflink
         return raw_reflink, ref_group.strip(), triplets
+
+    def process_bookmarks(self, string):
+        # not currently excluded from the reflink parser
+        links = bookmark_regex.findall(string)
+        link_iter = bookmark_regex.finditer(string)
+
+        raw_bookmark = '\n'.join(map(lambda x: x.group(0), link_iter))
+
+        ref_group = []
+        triplets = []
+        for link in links:
+            name = link[2] if link[2] else re.sub(r'^https?:\/\/','',link[1])
+            ref_group.append('- [{}][{}]'.format(
+                name,
+                link[0],
+            ))
+            triplets.append((link[0], link[1], name))
+
+        ref_group = '\n'.join(ref_group)+'\n\n'+raw_bookmark
+        return raw_bookmark, ref_group.strip(), triplets
+
 
     def process_headings(self, string):
         headings = heading_regex.finditer(string)
@@ -337,6 +380,116 @@ class Article:
             section_list.append(section.group(0))
 
         return section_dict, section_list
+
+    def process_bibdata(self, source=None, citekey=None, url=None):
+        '''
+        Should ultimately make calls to a (prebuilt?) DocSync object so we aren't
+        re-indexing the bib every article. Could consider just making this completely
+        external, handled the way the graph association is.
+        '''
+        BIBTEX_ENTRY_REGEX = re.compile('^@.*{(.*),\n[\s\S]*?\n}',re.MULTILINE)
+        BIBTEX_SOURCE_REGEX  = re.compile('^[^\S\r\n]*?file[^\S\r\n]*?=[^\S\r\n]*?{(.*)}',re.MULTILINE)
+        BIBTEX_URL_REGEX  = re.compile('^[^\S\r\n]*?archive_url[^\S\r\n]*?=[^\S\r\n]*?{(.*)}',re.MULTILINE)
+        BIBTEX_INF_URL_REGEX  = re.compile('^[^\S\r\n]*?url[^\S\r\n]*?=[^\S\r\n]*?{(.*)}',re.MULTILINE)
+
+        bib_path  = Path('/home/smgr/Documents/notes/docs/docsyncbib.bib')
+        wiki_path = Path('/home/smgr/Documents/notes/')
+
+        source  = source.strip() if source is not None else ''
+        citekey = citekey.strip() if citekey is not None else ''
+        url     = url.strip() if url is not None else ''
+
+        bib_ent_by_source  = {}
+        bib_ent_by_citekey = {}
+        bib_ent_by_url     = {}
+        bib_ent_by_inf_url = {}
+
+        bib_content = bib_path.open().read()
+        for m in BIBTEX_ENTRY_REGEX.finditer(bib_content):
+            bib_entry   = m.group(0)
+            bib_citekey = m.group(1)
+            bib_source  = BIBTEX_SOURCE_REGEX.search(bib_entry)
+            bib_url     = BIBTEX_URL_REGEX.search(bib_entry)
+            bib_inf_url = BIBTEX_INF_URL_REGEX.search(bib_entry)
+
+            if bib_source:
+                bib_source = bib_source.group(1)
+                bib_source = str(Path(bib_source).relative_to(wiki_path))
+            else:
+                bib_source = ''
+
+            if bib_url:
+                bib_url = bib_url.group(1).strip()
+            else:
+                bib_url = ''
+
+            if bib_inf_url:
+                bib_inf_url = bib_inf_url.group(1).strip()
+            else:
+                bib_inf_url = ''
+
+            bib_data = {
+                'source':  bib_source,
+                'citekey': bib_citekey,
+                'url':     bib_url,
+                'inf_url': bib_inf_url,
+                'bibtex':  bib_entry,
+            }
+
+            bib_ent_by_citekey[bib_citekey] = bib_data
+            if bib_source:
+                bib_ent_by_source[bib_source] = bib_data
+            if bib_url:
+                bib_ent_by_url[bib_url] = bib_data
+            if bib_inf_url:
+                bib_ent_by_inf_url[bib_inf_url] = bib_data
+
+        # feed pages mostly defined around a URL
+        res = None
+        if citekey:
+            res = bib_ent_by_citekey.get(citekey)
+
+        if url and not res:
+            res = bib_ent_by_url.get(url)
+
+        if url and not res:
+            res = bib_ent_by_inf_url.get(url)
+            if res is not None:
+                # archive_url did not match url in the file; set canonical
+                # URL to the inferred one, since this is what matches the url in
+                # the file.
+                res['url'] = res['inf_url']
+
+        if source and not res:
+            m = re.match(r'(?:\[\[)?([^\]\[]*)(?:\]\])?', source)
+            if m: 
+                rel_src = m.group(1)
+                ful_src = Path(rel_src)
+                res = bib_ent_by_source.get(str(ful_src))
+
+            if res is not None:
+                # url in document did not match either archive_url or the
+                # inferred url. One or both may be defined, however, for the
+                # source file. Default to keeping the archive_url since this is
+                # more accurate (would likely want to override the file URL
+                # with this since the file is directly attached). If no
+                # archive_url is defined, set url to inf_url, as there's good
+                # evidence this url is related to the file
+                if not res.get('url'):
+                    res['url'] = res['inf_url']
+
+        # commented out for; extremely unlikely for a file to have a citekey but no
+        # other source identifiers. If it does have a citekey, there are no instances
+        # where I would want to overwrite listed files of links, in the case of a
+        # (possible) duplicate entry. The other attrs should dictate the entry
+        #if citekey and not res:
+        #    res = bib_ent_by_citekey.get(citekey)
+
+        # for downstream apps: bib data will provide url and inf_url. If url is
+        # present, use it
+        return res if res else {}
+
+
         
 
     def transform_links(self, string, path='', graph=None):
@@ -563,6 +716,7 @@ class Article:
 
         if self.metadata.get('toc') != 'false':
             pdoc_args.append('--toc')
+            pdoc_args.append('--toc-depth=4')
 
         self.html = {}
         self.html.update(self.metadata)
@@ -583,18 +737,39 @@ class Article:
                 self.html['content'] = self.conversion_wrapper(content,
                                                        extra_args=pdoc_args,
                                                        filters=filters)
+                # test simply render; guess --embed-resources not an option? despite being
+                # in the docs
+                #self.html['simple_content'] = self.conversion_wrapper(
+                #        content,
+                #        extra_args=pdoc_args+['--embed-resources'],
+                #        filters=filters
+                #)
+
         except RuntimeError:
             print(Fore.RED + 'Pandoc failed to convert content in file '+ self.name)
             raise
+
+
+        # non-body pdoc args, manual for now
+        mmd_args = [
+            '-C',
+            '--bibliography={}'.format('/home/smgr/Documents/notes/docs/docsyncbib.bib'),
+            '-M link-citations',
+            '-M link-bibliography', 
+        ]
 
         # convert backlinks
         for linklist in self.linkdata.values():
             for link in linklist:
                 context = self.transform_links(link['context'])
+                context = self.transform_tikz(context)
+                context = self.transform_pdftex(context)
+                context += '\n'+self.metadata['reflinks'] if self.metadata.get('reflinks') else ''
                 if fast:
                     link['html'] = misaka.html(context)
                 else:
                     link['html'] = self.conversion_wrapper(context, 
+                                                           extra_args=mmd_args,
                                                            filters=filters)
 
         # render extra metadata components to HTML
@@ -609,6 +784,7 @@ class Article:
                     html_text = misaka.html(value)
                 else:
                     html_text = self.conversion_wrapper(value, 
+                                                        extra_args=mmd_args,
                                                         filters=filters)
                 
                 self.html[key] = re.sub(

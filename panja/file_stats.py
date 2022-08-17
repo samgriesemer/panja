@@ -6,10 +6,12 @@ from collections import defaultdict
 from tqdm import tqdm
 from difflib import unified_diff, HtmlDiff
 from datetime import datetime
+from typing import Optional
+
 from panja.cache import Cache
 from panja.article import Article
+from panja import utils
 
-from typing import Optional
 
 class IncrementFile:
     """Diff-based stats for file groups"""
@@ -40,9 +42,11 @@ class IncrementFile:
         if m is not None:
             self.name, self.date = m.groups()
         else:
-            self.name= self.date = ''
+            self.name = self.date = ''
 
         self.restore_path = None
+        self.post_bu_time = ''
+        self.post_bu_diff = ''
         self.lines        = []
         self.stats        = {}
         self.wlinks       = {}
@@ -91,6 +95,13 @@ class IncrementFile:
         })
         self.wlinks = Article.process_links(None, lstr)
 
+    def set_post_bu_time(self, dt):
+        if self.date and dt > self.date:
+            self.post_bu_time = dt
+            d2 = datetime.fromisoformat(dt)
+            d1 = datetime.fromisoformat(self.date)
+            self.post_bu_diff = round((d2-d1).total_seconds()/60)
+
 
 class IncrementDiff:
     '''
@@ -131,10 +142,12 @@ class IncrementDiff:
         ))
 
     def compute_diff_table(self):
+        post_int = self.inc_pre.post_bu_diff
+        post_str = '(+{}m)'.format(post_int) if post_int else ''
         table = self.html_diff.make_table(
             self.inc_pre.read_restore(),
             self.inc_post.read_restore(),
-            fromdesc='{}@{}'.format(self.inc_pre.name,self.inc_pre.date),
+            fromdesc='{}@{}{}'.format(self.inc_pre.name,self.inc_pre.date,post_str),
             todesc='{}@{}'.format(self.inc_post.name,self.inc_post.date),
             context=True,
             numlines=1,
@@ -162,21 +175,27 @@ class DiffStat:
         verbose=False,
         earlier_paths: Optional[list]=None
     ):
-        self.backup_path    = Path(backup_path)
-        self.increment_path = Path(backup_path, 'rdiff-backup-data/increments')
-        self.tmp_path       = Path(tmp_path)
-        self.diff_cache     = diff_cache.load() if diff_cache is not None else None
-        self.group_size     = 16
-        self.verbose        = verbose
-        self.earlier_paths  = []
-        self.last_updated   = None
+        self.backup_path       = Path(backup_path)
+        self.backup_data_path  = Path(self.backup_path, 'rdiff-backup-data')
+        self.increment_path    = Path(self.backup_data_path, 'increments')
+        self.tmp_path          = Path(tmp_path)
+        self.diff_cache        = diff_cache.load() if diff_cache is not None else None
+        self.group_size        = 16
+        self.verbose           = verbose
+        self.earlier_paths     = earlier_paths if earlier_paths else []
+        self.earlier_inc_paths = []
+        self.last_updated      = None
         
         if earlier_paths is not None:
-            self.earlier_paths  = [Path(p, 'rdiff-backup-data/increments') for p in earlier_paths]
+            self.earlier_inc_paths  = [Path(p, 'rdiff-backup-data/increments') for p in earlier_paths]
 
         self.inc_dict    = defaultdict(list)
         self.diff_dict   = defaultdict(list)
         self.dated_diffs = defaultdict(list)
+
+        # session metadata on all backup attempts
+        self.sessions = {}
+        self.sorted_session_dates = []
 
         # dated absolute stats on per-file basis
         self.local_stats       = defaultdict(dict)
@@ -196,14 +215,36 @@ class DiffStat:
         self.tmp_path.mkdir(exist_ok=True)
         self.back_regex = re.compile(r'{}/(.*)\.md'.format(str(self.backup_path)))
 
+    def process_sessions(self):
+        for inc_path in self.earlier_paths+[self.backup_path]:
+            bud_path = Path(inc_path, 'rdiff-backup-data')
+            sessions = Path(bud_path, 'session_statistics.[0-9]*')
+            sess_regex = re.compile(r'{}/session_statistics\.(.*)\.data'.format(bud_path))
+            for i,session_path in enumerate(tqdm(glob.glob(str(sessions)),
+                                    desc='process session files')):
+                m = sess_regex.match(session_path)
+                if not m: continue
+                self.sessions[m.groups()[0]] = session_path
+
+        self.sorted_session_dates = sorted(self.sessions.keys())
+
     def process_increments(self):
         wait_group = []
 
         # PROCESS MD RESTORATIONS
-        for inc_path in self.earlier_paths+[self.increment_path]:
-            for i,increment in tqdm(enumerate(glob.glob(str(Path(inc_path, '*.md.[0-9]*')))),
-                                    desc='restore MD archives'):
+        for inc_path in self.earlier_inc_paths+[self.increment_path]:
+            for i,increment in enumerate(tqdm(glob.glob(str(Path(inc_path, '*.md.[0-9]*'))),
+                                    desc='restore MD archives')):
                 fs = IncrementFile(inc_path, increment)
+                
+                # set nearest backup time following increment
+                sess_loc = utils.bs(self.sorted_session_dates, fs.date)
+                sess_len = len(self.sorted_session_dates)
+                if sess_loc < sess_len:
+                    if self.sorted_session_dates[sess_loc] == fs.date and sess_loc < sess_len-1:
+                        sess_loc += 1
+                    fs.set_post_bu_time(self.sorted_session_dates[sess_loc])
+
                 self.inc_dict[fs.name].append(fs)
 
                 rproc = fs.restore(self.tmp_path)
@@ -363,7 +404,11 @@ class DiffStat:
         for fname in tqdm(self.link_traces.keys(),
                           desc='compute local inter file stats'):
             self.local_inter_stats[fname] = self.stitch_traces([
-                { date:{'linked_to':links.get(fname,0)} for date, links in trace.items() if fname in links }
+                {
+                    date:{'linked_to':links.get(fname,0)}
+                    for date, links in trace.items()
+                    if fname in links
+                }
                 for trace in self.link_traces.values()
             ])
         #full_trace = self.stitch_traces(list(self.link_traces.values()))
@@ -411,10 +456,12 @@ if __name__ == '__main__':
         tmp_path='/var/tmp/rdiff-stat',
         verbose=False,
         earlier_paths=[
+            '/media/smgr/data/backups/arch_incremental/notes-rdiff-pre080322/',
             '/media/smgr/data/backups/arch_incremental/rdiff-notes-pre041022/',
             '/media/smgr/data/backups/arch_incremental/notes-rdiff-pre042622/',
         ]
     )
+    stats.process_sessions()
     stats.process_increments()
     stats.compute_stats()
     stats.compute_inter_stats()

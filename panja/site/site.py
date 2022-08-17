@@ -81,6 +81,7 @@ class Site(object):
     def __init__(self,
                  environment,
                  searchpaths,
+                 watchpaths,
                  outpath,
                  encoding,
                  logger,
@@ -93,6 +94,7 @@ class Site(object):
                  ):
         self.env = environment
         self.searchpaths = searchpaths
+        self.watchpaths = watchpaths
         self.outpath = outpath
         self.encoding = encoding
         self.logger = logger
@@ -107,6 +109,7 @@ class Site(object):
     @classmethod
     def make_site(cls,
                   searchpaths=["templates"],
+                  watchpaths=[],
                   outpath=".",
                   contexts=None,
                   rules=None,
@@ -216,6 +219,11 @@ class Site(object):
             if not os.path.isabs(searchpath):
                 searchpaths[i] = os.path.join(basepath, searchpath)
 
+        # make any relative search paths absolute
+        for i, watchpath in enumerate(watchpaths):
+            if not os.path.isabs(watchpath[0]):
+                watchpaths[i][0] = os.path.join(basepath, watchpath[0])
+
         # update relative outpath
         if not os.path.isabs(outpath):
             outpath = os.path.join(basepath, outpath)
@@ -241,6 +249,7 @@ class Site(object):
 
         return cls(environment,
                    searchpaths=searchpaths,
+                   watchpaths=watchpaths,
                    outpath=outpath,
                    encoding=encoding,
                    logger=logger,
@@ -555,12 +564,17 @@ class Site(object):
         if reloader:
             self.logger.info("Watching search paths: \n\t{}".format(
                 Fore.BLUE+'\n\t'.join(self.searchpaths)+Fore.RESET))
+            self.logger.info("Watching (pure) watch paths: \n\t{}".format(
+                Fore.YELLOW+'\n\t'.join(map(lambda x:x[0],self.watchpaths))+Fore.RESET))
 
             self.logger.info("Press Ctrl+C to stop.")
 
             # add searchpaths to watch list, need to be globs
             for searchpath in self.searchpaths:
                 server.watch(os.path.join(searchpath, '**'), self.watch_handler)
+
+            for watchpath, watchargs in self.watchpaths:
+                server.watch(watchpath, **watchargs)
 
         if server or reloader or liveport:
             port = 8000
@@ -592,17 +606,21 @@ class Site(object):
                 raise Exception('Couldn\'t find overlapping search path \
                                 for file with path {}'.format(f))
 
+        template_names = []
         for f, spath in spaths:
             filename = os.path.relpath(f, spath)
+            template_names.append(filename)
             if self.is_static(filename):
                 files = self.get_dependencies(filename)
                 self.copy_static(files)
             else:
                 templates = self.get_dependencies(filename)
+                # for now, ignore root template; require site restart
+                if self.is_partial(filename): continue
                 self.render_templates(templates)
 
         if self.postreload:
-            self.postreload(self)
+            self.postreload(self, map(lambda t:self.get_template(t),template_names))
 
     def __repr__(self):
         return "%s('%s', '%s')" % (type(self).__name__,
