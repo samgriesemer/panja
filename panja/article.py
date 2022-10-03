@@ -16,6 +16,7 @@ from . import utils
 # captures base link, anchors, display text; any combo of them
 link_regex = re.compile('\[\[([^\]]*?)(#[^\]]*?)?(?:\|([^\]]*?))?\]\]')
 reflink_regex = re.compile('\[(\w*)\]: (http[^\s]*) ?(?:\(([^\)]*)\))?(?:"([^"]*)")?')
+footnote_regex = re.compile('\[\^(\w*)\]: (.+)')
 bookmark_regex = re.compile('\[([a-zA-Z]{1,2})\]: (http[^\s]*) ?(?:\(([^\)]*)\))?(?:"([^"]*)")?')
 heading_regex = re.compile('(#{1,6}) (.*)')
 data_regex = re.compile('# Data\s+```yaml\s([\s\S]*?)\s+```')
@@ -61,6 +62,7 @@ class Article:
         # could build in backlink processing to a process_links-like function
 
     def process_metadata(self):
+        if not Path(self.fullpath).is_file(): return {}
         with open(self.fullpath, 'r') as f:
             ft = f.read()
             f.seek(0)
@@ -98,9 +100,13 @@ class Article:
             
             if 'series' in metadata:
                 metadata['series_links'] = self.process_links(metadata['series'])
+                metadata['series_structure'] = self.process_series(metadata['series'])
 
             if 'files' in metadata:
                 metadata['files_links'] = self.process_links(metadata['files'])
+            elif 'cite_source' in metadata:
+                metadata['files_links'] = self.process_links(metadata['cite_source'])
+
 
             public_carousel_html, local_carousel_html, public_files, local_files = self.get_carousels(metadata)
             metadata['public_carousel_html'] = public_carousel_html
@@ -354,6 +360,38 @@ class Article:
             hset.add(cand_target)
 
         return hmap
+
+    def process_series(self, string):
+        root = {}
+        level = -1
+        linrx = re.compile(r'( {4})*[\*\-\+] (.*)')
+        name_list = []
+        
+        for line in string.split('\n'):
+            m = linrx.findall(line)
+            if not m: continue
+            m = m[0]
+            clvl = len(m[0])
+            name = m[1]
+        
+            if clvl > level:
+                name_list.append(name)
+            elif clvl < level:
+                name_list.pop()
+                name_list.pop()
+                name_list.append(name)
+            else:
+                name_list.pop()
+                name_list.append(name)
+        
+            level = clvl
+            temp = root
+            for n in name_list:
+                if n not in temp:
+                    temp[n] = {}
+                temp = temp[n]
+
+        return root
 
     def process_data(self, string):
         yamld = data_regex.findall(string)
@@ -653,6 +691,71 @@ class Article:
 
         return nt
 
+    def transform_pdf_images(self, string):
+        '''
+        Transforms image-wrapped PDF links with page ranges as anchors. PDF wiki-links
+        without anchors are ignored. The image body is replaced with match image numbers
+        in a carousel.
+        '''
+        def repl(m):
+            caption     = m.group(1)
+            link_target = m.group(2)
+            link        = link_regex.match('[[{}]]'.format(link_target))
+
+            if link:
+                title  = link.group(1) if link.group(1) else ''
+                anchor = link.group(2) if link.group(2) else ''
+
+                if Path(title).suffix != '.pdf': return m.group(0)
+                target = utils.title_to_fname(title)
+            else:
+                return m.group(0)
+            
+            target_rel = str(Path(target).relative_to('docs'))
+            img_path = Path('/home/smgr/Documents/notes/images/pdf/',target_rel)
+            url, pages = utils.wikipdf_to_link(target, anchor)
+            chtml = self.carousel_html(
+                '{} <i>(p. {})</i>'.format(target, anchor),
+                target_rel,
+                img_path,
+                hide=False,
+                pages=pages
+            )
+
+            chtml  = '<figure>' + chtml
+            chtml += '<figcaption aria-hidden="true">{}</figcaption>'.format(caption)
+            chtml += '</figure>'
+
+            return chtml
+
+        nt = re.sub(
+            #pattern=r'!\[(.*?)\]\((.*?\.pdf#.*?)\)',
+            pattern=r'!\[((?:[\s\S](?!!\[))*)\]\((docs\/.*?\.pdf#\d.*?)\)',
+            repl=repl,
+            string=string,
+            #flags=re.DOTALL
+        )
+        # note: this pattern may be susceptible to overlapping image problems. Things get
+        # murky with all applied transformations, but it's possible for an image target to
+        # start a match, and finish at an arbitrary link tail that looks like
+        # "docs/.../.pdf#...", i.e. a PDF anchor in any other link lower in the document
+        # body. Having the "\d" constraint immediately after the anchor suggests the link
+        # has yet to be processed (does yet start with "page="). A regular link to PDF
+        # with anchor, for example, will already have been processed and prevent most of
+        # these clashes.
+
+        return nt
+
+    def transform_footnotes(self, string):
+        return re.sub(
+            pattern=footnote_regex,
+            repl=lambda m:'(fn{}) {}'.format(m.group(1),m.group(2)),
+            string=string
+        )
+
+    def add_reflinks(self, string):
+        return string + '\n\n' + self.metadata.get('reflinks','')
+
     def get_carousels(self, metadata):
         public_carousel_str = ''
         local_carousel_str = ''
@@ -674,35 +777,51 @@ class Article:
             ann_src = Path('/home/smgr/Documents/notes/images/pdf/rm/docs/', stem)
 
             if reg_src.exists():
-                public_carousel_str += self.carousel_html(str(stem), str(reg_src))
+                public_carousel_str += self.carousel_html(str(stem), str(stem), str(reg_src))
                 #public_files[str(stem)] = str(Path('/docs/', stem))
             if ann_src.exists():
                 name = 'rm/docs/'+str(stem)
-                local_carousel_str += self.carousel_html(name, str(ann_src))
+                local_carousel_str += self.carousel_html(name, name, str(ann_src))
                 local_files[name] = str(Path('/docs/', name))
 
         note_src = Path('/home/smgr/Documents/notes/images/pdf/rm/', self.name+'.pdf')
         if note_src.exists():
             name = 'rm/'+self.name+'.pdf'
-            local_carousel_str += self.carousel_html(name, str(note_src))
+            local_carousel_str += self.carousel_html(name, name, str(note_src))
             local_files[name] = str(Path('/docs/', name))
 
         return public_carousel_str, local_carousel_str, public_files, local_files
 
-    def carousel_html(self, name, path):
-        outstr = '<div class="inner-carousel-wrapper" style="display:none;">'
+    def carousel_html(self, name, rel_doc, path, hide=True, pages=None):
+        if pages: pages = set(pages)
+        outstr = '<div class="inner-carousel-wrapper" {}>'.format(
+            'style="display:none;"' if hide else ''
+        )
         outstr += '<div style="font-weight:bold;border-bottom:1px solid;color:black;">{}</div>'.format(name)
-        outstr += '<div class="carousel" data-docsource="{}">'.format(name)
+        outstr += '<div class="carousel" data-docsource="{}">'.format(rel_doc)
         for img in sorted(utils.directory_tree(path)):
-            outstr += '<div class="card"><img src="/images/pdf/'+name+'/'+img+'"></div>'
+            img_num = int(re.match(r'img-(\d+).png', img).group(1))
+            if pages and img_num not in pages: continue
+            outstr += '<div class="card">'
+            outstr += '<img src="/images/pdf/'+rel_doc+'/'+img+'">'
+            outstr += '<span style="position:absolute;font-weight:bold;padding:3px;">{}</span>'.format(img_num)
+            outstr += '</div>'
         outstr += '</div></div>'
         return outstr
+
+    def output_disambiguation(self):
+        ntype = self.metadata.get('type')
+        if ntype == 'html-slides':
+            return 'slidy'
+        else:
+            return 'html5'
 
     def conversion_wrapper(self, content, extra_args=None, filters=None):
         if extra_args is None: extra_args = []
         if filters is None: filters = []
-
-        cmd = ['pandoc', '--from', 'markdown', '--to', 'html5']
+        
+        otype = self.output_disambiguation()
+        cmd = ['pandoc', '--from', 'markdown', '--to', otype]
         cmd += extra_args
         cmd += [e for f in filters for e in ['-F', f]]
 
@@ -728,6 +847,7 @@ class Article:
         content = self.transform_tasks(content)
         content = self.transform_tikz(content)
         content = self.transform_pdftex(content)
+        content = self.transform_pdf_images(content)
 
         try:
             if fast:
@@ -764,6 +884,9 @@ class Article:
                 context = self.transform_links(link['context'])
                 context = self.transform_tikz(context)
                 context = self.transform_pdftex(context)
+                context = self.transform_footnotes(context)
+                context = self.add_reflinks(context)
+                context = self.transform_pdf_images(context)
                 context += '\n'+self.metadata['reflinks'] if self.metadata.get('reflinks') else ''
                 if fast:
                     link['html'] = misaka.html(context)

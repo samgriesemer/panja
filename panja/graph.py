@@ -3,6 +3,7 @@ from collections import defaultdict
 from datetime import datetime
 
 from . import filedata
+from . import utils
 
 class ArticleGraph:
     def __init__(self):
@@ -209,3 +210,42 @@ class ArticleGraph:
                    filedata.dict2keys(article.metadata['filedata'])]
         print('Inserting journal data for {}'.format(article.name))
         filedata.bulk_insert(triples)
+
+    def global_series(self):
+        def series2md(series):
+            s = []
+            def list_level(sub,lvl):
+                if not sub: return ''
+                for k,v in sub.items():
+                    s.append(level_display(k,lvl))
+                    list_level(v,lvl+1)
+                return s
+                        
+            def level_display(link,lvl):
+                return ' '*(4*lvl)+'{} {}'.format('-*+'[min(lvl,2)], link)
+                
+            return list_level(series,0)
+
+        def stitch_series(hooks):
+            cmap = {}
+            nmap = set()
+            def complete_hook(sub):
+                for k,v in sub.items():
+                    if k in hooks and k not in cmap:
+                        tgt = hooks[k]
+                    elif k not in hooks:
+                        tgt = v
+                    else: continue
+                    complete_hook(tgt)
+                    cmap[k] = {ck:cmap[ck] for ck in tgt}
+                    nmap.update(list(tgt.keys()))
+            complete_hook(hooks)
+            return {k:v for k,v in cmap.items() if k not in nmap}
+
+        hooks = {
+            '[[{}]]'.format(utils.fname_to_title(art.name)): art.metadata['series_structure']
+            for art in list(self.article_map.values())
+            if 'series_structure' in art.metadata
+        }
+        gseries = stitch_series(hooks)
+        return series2md(gseries)

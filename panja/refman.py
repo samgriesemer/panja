@@ -129,6 +129,8 @@ class DocSync():
     BIBTEX_ENTRY_REGEX = re.compile('^@.*{(.*),\n[\s\S]*?\n}',re.MULTILINE)
     BIBTEX_FILE_REGEX  = re.compile('^[^\S\r\n]*?file[^\S\r\n]*?=[^\S\r\n]*?{(.*)}',re.MULTILINE)
     BIBTEX_APATH_REGEX  = re.compile('^[^\S\r\n]*?archive_path[^\S\r\n]*?=[^\S\r\n]*?{(.*)}',re.MULTILINE)
+    BIBTEX_AURL_REGEX  = re.compile('^[^\S\r\n]*?archive_url[^\S\r\n]*?=[^\S\r\n]*?{(.*)}',re.MULTILINE)
+    BIBTEX_TITLE_REGEX  = re.compile('^[^\S\r\n]*?title[^\S\r\n]*?=[^\S\r\n]*?{(.*)}',re.MULTILINE)
 
     def __init__(self, pdf_path, bib_path):
         self.pdf_path = Path(pdf_path).expanduser().resolve()
@@ -163,6 +165,7 @@ class DocSync():
         self.bib_entries = {}
         self.bib_entries_by_file = {}
         self.bib_entries_by_apath = {}
+        self.bib_entries_by_aurl = {}
         self.bib_file2key = {}
 
         bib_content = self.bib_path.open().read()
@@ -177,6 +180,10 @@ class DocSync():
             archive_path_attr = self.BIBTEX_APATH_REGEX.search(m.group(0))
             if archive_path_attr:
                 self.bib_entries_by_apath[str(Path(archive_path_attr.group(1)))] = m.group(0)
+
+            archive_url_attr = self.BIBTEX_AURL_REGEX.search(m.group(0))
+            if archive_url_attr:
+                self.bib_entries_by_aurl[archive_url_attr.group(1)] = m.group(0)
 
         # parse blacklist
         self.blk_path.touch(exist_ok=True)
@@ -277,6 +284,10 @@ class DocSync():
         Pull (new) PDF sources from an Archive, copy them to the PDF path, rename
         according to citekey. Maintains archive-added entries with extra BibTeX metadata
         to enable proper association during syncing.
+
+        Note: as is, renaming only applies to new sources not already copied (ie with a
+        unique path on disk). Although each sync operates on all files from the archive,
+        those that have been copied need to be renamed using another operation.
         '''
         self.parse_bib()
         new_entries = []
@@ -330,7 +341,7 @@ class DocSync():
             # GENERATE CITEKEY
             citekey = self.get_clean_key_from_bibtex(res['bibtex'])
             if citekey in running_citekeys:
-                self.logger.info(utils.color_str('[citekey clash]',Fore.YELLOW)+entry_str)
+                self.logger.info(utils.color_str('[citekey clash]',Fore.YELLOW)+'entry URL: {}'.format(entry.metadata.get('url')))
             
                 # assign unique citekey
                 while citekey in running_citekeys:

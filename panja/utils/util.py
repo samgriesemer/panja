@@ -36,8 +36,12 @@ def title_to_fname(title):
     return title.replace(' ', '_')
 
 def title_to_link(match, path='', graph=None):
-    '''Return Markdown-style link from file title'''
-    title  = match.group(1) if match.group(1) else '' 
+    '''
+    Return Markdown-style link from file title
+
+    - match: link_regex match object
+    '''
+    title  = match.group(1) if match.group(1) else ''
     anchor = match.group(2) if match.group(2) else ''
     desc   = match.group(3) if match.group(3) else ''
 
@@ -49,24 +53,66 @@ def title_to_link(match, path='', graph=None):
         else:
             display = title
 
-    article_name = title_to_fname(title)
-    pdf = Path(article_name).suffix == '.pdf'
-    if graph and graph.get_article(article_name):
-        link_txt = '['+display+']('+str(Path('/',path,article_name+parse_anchor(anchor,
-                graph.get_article(article_name).metadata.get('heading_map'))))+')'
-    elif pdf:
-        link_txt = '['+display+']('+str(Path('/pdf.html?file=',article_name))+')'
-    else:
-        link_txt = '['+display+']('+str(Path('/',path,article_name+parse_anchor(anchor)))+')'
-
-    # button experiment
+    target = title_to_fname(title)
+    pdf = Path(target).suffix == '.pdf'
     simple = not (pdf or path)
-    link_txt +=  '''<button 
-                        class='arrow ssrc'
-                        data-docsource="{}">←
-                    </button>'''.format(str(Path('/',path,'simple' if simple else '',article_name)))
+
+    hmap = None
+    if graph and graph.get_article(target):
+        hmap = graph.get_article(target).metadata.get('heading_map')
+
+    # set outgoing URL
+    if pdf:
+        url, _ = wikipdf_to_link(target, anchor)
+        url_preview = target
+    else:
+        url = str(Path(
+            '/',
+            path,
+            target + parse_anchor(anchor, hmap)
+        ))
+        url_preview = url
+
+    # set URL to use for previews
+    if simple:
+        url_preview = str(Path(
+            '/',
+            path,
+            target + parse_anchor(
+                anchor, hmap
+            ) + '?mode=simp'
+        ))
+     
+    link_txt = '['+display+']('+url+')'
+    link_txt += '''<button 
+                       class='arrow ssrc'
+                       data-docsource="{}">←
+                   </button>'''.format(url_preview)
+    link_txt += '''<button 
+                       class='arrow wsrc'
+                       data-docsource="{}">↑
+                   </button>'''.format(url_preview)
 
     return link_txt
+
+def wikipdf_to_link(fname, anchor):
+    '''Map PDF wikilinks to proper links, handling syntax-specific anchors.'''
+    base_url = str(Path('/pdf.html?file=',fname))
+    anchor = anchor.replace('#','')
+
+    pages = []
+    for rngstr in anchor.split(','):
+        if not all([s.isnumeric() for s in rngstr.split('-')]): continue
+        numrng = [int(s) for s in rngstr.split('-')]
+        pages += list(range(numrng[0],numrng[-1]+1))
+
+    if pages: 
+        pages = list(set(pages))
+        pages = sorted(pages)
+
+        base_url += '#page={}'.format(pages[0])
+
+    return base_url, pages
 
 def parse_anchor(anchor_str, hmap=None):
     '''

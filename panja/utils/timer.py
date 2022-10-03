@@ -27,4 +27,5 @@ def debounce_func(func, delay):
         if not timer.is_done(): return
         func(*args)
         timer.start(delay)
+    temp.__name__ = func.__name__
     return temp
