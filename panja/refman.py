@@ -128,9 +128,9 @@ class DocSync():
     '''
     BIBTEX_ENTRY_REGEX = re.compile('^@.*{(.*),\n[\s\S]*?\n}',re.MULTILINE)
     BIBTEX_FILE_REGEX  = re.compile('^[^\S\r\n]*?file[^\S\r\n]*?=[^\S\r\n]*?{(.*)}',re.MULTILINE)
-    BIBTEX_APATH_REGEX  = re.compile('^[^\S\r\n]*?archive_path[^\S\r\n]*?=[^\S\r\n]*?{(.*)}',re.MULTILINE)
+    BIBTEX_APATH_REGEX = re.compile('^[^\S\r\n]*?archive_path[^\S\r\n]*?=[^\S\r\n]*?{(.*)}',re.MULTILINE)
     BIBTEX_AURL_REGEX  = re.compile('^[^\S\r\n]*?archive_url[^\S\r\n]*?=[^\S\r\n]*?{(.*)}',re.MULTILINE)
-    BIBTEX_TITLE_REGEX  = re.compile('^[^\S\r\n]*?title[^\S\r\n]*?=[^\S\r\n]*?{(.*)}',re.MULTILINE)
+    BIBTEX_TITLE_REGEX = re.compile('^[^\S\r\n]*?title[^\S\r\n]*?=[^\S\r\n]*?{(.*?)}',re.MULTILINE|re.DOTALL)
 
     def __init__(self, pdf_path, bib_path):
         self.pdf_path = Path(pdf_path).expanduser().resolve()
@@ -212,7 +212,7 @@ class DocSync():
         duplicate keys (barring other changes).
         '''
         self.parse_bib()
-        pdf_glob = Path(self.pdf_path,'**/*.pdf',recursive=True) if recursive else Path(self.pdf_path,'*.pdf')
+        pdf_glob = Path(self.pdf_path,'**/*.pdf') if recursive else Path(self.pdf_path,'*.pdf')
 
         black_list = []
         add_entries = []
@@ -220,7 +220,7 @@ class DocSync():
         running_citekeys = set(self.bib_entries.keys())
         ignorepaths = ignorepaths if ignorepaths else []
 
-        for pdf in tqdm(glob.glob(str(pdf_glob)),
+        for pdf in tqdm(glob.glob(str(pdf_glob), recursive=recursive),
                         desc='docsync: syncing {} to BibTeX'.format(self.pdf_path),
                         colour='cyan'):
             

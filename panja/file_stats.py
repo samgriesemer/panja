@@ -398,7 +398,7 @@ class DiffStat:
             last_date = date
 
         # timing
-        self.last_updated = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        self.last_updated = datetime.now().timestamp()
 
     def compute_inter_stats(self):
         for fname in tqdm(self.link_traces.keys(),

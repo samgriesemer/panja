@@ -38,7 +38,7 @@ def standalone2pdf(instr, outfile, preamble=None, extra_files=None):
         f.write(instr)
         f.write("\n\\end{document}\n")
 
-    rcode = call(["pdflatex", 'stal.tex'], stdout=DEVNULL)
+    rcode = call(["pdflatex", 'stal.tex'])#, stdout=DEVNULL)
     os.chdir(olddir)
 
     shutil.copyfile(tmpdir + '/stal.pdf', outfile)
@@ -49,7 +49,7 @@ def pdf2svg(infile, outfile=None, remove_pdf=False):
     if outfile is None:
         outfile = Path(infile).with_suffix('.svg')
 
-    rcode = call(['pdf2svg', infile, outfile], stdout=DEVNULL)
+    rcode = call(['pdf2svg', infile, outfile])#, stdout=DEVNULL)
     if remove_pdf: Path(infile).unlink()
 
     return rcode

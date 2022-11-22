@@ -518,7 +518,7 @@ class Site(object):
         else:
             return []
 
-    def render(self, build=True, server=False, reloader=False, liveport=False):
+    def render(self, build=True, server=False, reloader=False, livereload=False, liveport=35729, port=8000):
         """Generate the site. A number of options may be specified to control the behavior
         of site's build process and downstream access to output files. 
 
@@ -558,7 +558,7 @@ class Site(object):
             self.postreload(self)
             self.postrender = True
         
-        if server or reloader or liveport:
+        if server or reloader or livereload:
             server = Server()
 
         if reloader:
@@ -569,22 +569,57 @@ class Site(object):
 
             self.logger.info("Press Ctrl+C to stop.")
 
+
+            def md_reload(path):
+                p = Path(path)
+                if p.suffix == '.md':
+                    return [p.stem]
+                else:
+                    return []
+
             # add searchpaths to watch list, need to be globs
             for searchpath in self.searchpaths:
-                server.watch(os.path.join(searchpath, '**'), self.watch_handler)
+                server.watch(os.path.join(searchpath, '**'),
+                             self.watch_handler,
+                             whitelist=md_reload,
+                             blacklist=lambda _:['pdf'])
 
             for watchpath, watchargs in self.watchpaths:
                 server.watch(watchpath, **watchargs)
 
-        if server or reloader or liveport:
-            port = 8000
-            liveport = 35729
-            if not liveport:
+        if server or reloader or livereload:
+            if not livereload:
                 server.serve(port=port,
                              host='0.0.0.0',
                              root=self.outpath,
                              default_extension='.html')
             else:
+                #import asyncio
+                #import threading
+                #from multiprocessing import Process
+
+                #def thread_wrap():
+                #    asyncio.set_event_loop(asyncio.new_event_loop())
+                #    print('server thread:',threading.current_thread().ident)
+                #    server.serve(port=port,
+                #                 host='0.0.0.0',
+                #                 root=self.outpath,
+                #                 liveport=liveport,
+                #                 default_extension='.html')
+
+                #thread = Thread(target=server.serve, kwargs={
+                #    'port':port,
+                #    'host':'0.0.0.0',
+                #    'root':self.outpath,
+                #    'liveport':liveport,
+                #    'default_extension':'.html'
+                #})
+                #thread = threading.Thread(target=thread_wrap)
+                #thread.start()
+                #thread = Process(target=thread_wrap)
+                #thread.start()
+                #thread.join()
+
                 server.serve(port=port,
                              host='0.0.0.0',
                              root=self.outpath,
@@ -620,7 +655,7 @@ class Site(object):
                 self.render_templates(templates)
 
         if self.postreload:
-            self.postreload(self, map(lambda t:self.get_template(t),template_names))
+            self.postreload(self, map(lambda t:self.get_template(t),template_names)) 
 
     def __repr__(self):
         return "%s('%s', '%s')" % (type(self).__name__,

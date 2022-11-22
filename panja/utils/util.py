@@ -5,6 +5,7 @@ import sys
 import re
 import logging
 import hashlib
+from datetime import datetime
 from pathlib import Path
 from colorama import Fore
 import tqdm
@@ -83,15 +84,16 @@ def title_to_link(match, path='', graph=None):
             ) + '?mode=simp'
         ))
      
-    link_txt = '['+display+']('+url+')'
-    link_txt += '''<button 
-                       class='arrow ssrc'
-                       data-docsource="{}">←
-                   </button>'''.format(url_preview)
-    link_txt += '''<button 
-                       class='arrow wsrc'
-                       data-docsource="{}">↑
-                   </button>'''.format(url_preview)
+    #link_txt = '['+display+']('+url+')'
+    link_txt = '<a class="wikilink" data-docsource="'+url_preview+'" href="'+url+'">'+display+'</a>'
+    #link_txt += '''<button 
+    #                   class='arrow ssrc'
+    #                   data-docsource="{}">←
+    #               </button>'''.format(url_preview)
+    #link_txt += '''<button 
+    #                   class='arrow wsrc'
+    #                   data-docsource="{}">↑
+    #               </button>'''.format(url_preview)
 
     return link_txt
 
@@ -134,6 +136,17 @@ def parse_anchor(anchor_str, hmap=None):
     tail = '#'+tail if tail else tail
     return tail
 
+def parse_sctl_timers():
+    timer_rx = r'(.*) PDT.*left.*ago\s*(.*).timer.*'
+    cmd      = 'systemctl list-timers'
+    cmd_out  = subprocess.check_output(cmd.split(' ')).decode('utf-8')
+    ftime    = '%a %Y-%m-%d %H:%M:%S'
+
+    return list(map(
+        lambda x: [datetime.strptime(x[0],ftime).timestamp(),x[1]],
+        re.findall(timer_rx, cmd_out)
+    ))
+
 def pdf_preview(pdf_path, img_path, only_mod=True):
     pdf_path = Path(pdf_path)
     img_path = Path(img_path)
@@ -142,6 +155,11 @@ def pdf_preview(pdf_path, img_path, only_mod=True):
     if only_mod:
         if img_path.exists() and os.listdir(str(img_path)) != []:
             for file in os.listdir(str(img_path)):
+                # note: in current state, this may as well just check the first item in 
+                # the non-empty image list. This heuristic should work fine since the
+                # first image should always be the oldest, and if it's newer than the PDF
+                # file then there's nothing to do. But leaving the logic here in case of a
+                # future change
                 if Path(img_path,file).stat().st_mtime < pdf_path.stat().st_mtime:
                     break
                 # all conditions met: non-empty, existing img path with all rendered

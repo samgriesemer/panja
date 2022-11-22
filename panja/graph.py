@@ -240,12 +240,12 @@ class ArticleGraph:
                     cmap[k] = {ck:cmap[ck] for ck in tgt}
                     nmap.update(list(tgt.keys()))
             complete_hook(hooks)
-            return {k:v for k,v in cmap.items() if k not in nmap}
+            return {k:v for k,v in cmap.items() if k not in nmap}, cmap
 
         hooks = {
             '[[{}]]'.format(utils.fname_to_title(art.name)): art.metadata['series_structure']
             for art in list(self.article_map.values())
             if 'series_structure' in art.metadata
         }
-        gseries = stitch_series(hooks)
-        return series2md(gseries)
+        gseries, cmap = stitch_series(hooks)
+        return series2md(gseries), cmap

@@ -90,10 +90,12 @@ class Article:
 
             # doesnt face issues if metadata components have colon and are only
             # one line, but when multiline colons can have unexpected effects
+            self.raw_metadata_dict = {}
             for m in re.findall('.*:[^:]*$', mt.group(1), flags=re.MULTILINE):
                 split = [m.split(':')[0], ':'.join(m.split(':')[1:])]
                 attr, val = map(str.strip, split)
                 metadata[attr.lower()] = val
+                self.raw_metadata_dict[attr.lower()] = val
 
             if 'tags' in metadata:
                 metadata['tag_links'] = self.process_links(metadata['tags'])
@@ -102,11 +104,10 @@ class Article:
                 metadata['series_links'] = self.process_links(metadata['series'])
                 metadata['series_structure'] = self.process_series(metadata['series'])
 
-            if 'files' in metadata:
+            if metadata.get('files'):
                 metadata['files_links'] = self.process_links(metadata['files'])
-            elif 'cite_source' in metadata:
+            elif metadata.get('cite_source'):
                 metadata['files_links'] = self.process_links(metadata['cite_source'])
-
 
             public_carousel_html, local_carousel_html, public_files, local_files = self.get_carousels(metadata)
             metadata['public_carousel_html'] = public_carousel_html
@@ -234,6 +235,210 @@ class Article:
 
         return tree
 
+    def proto_context_tree(self):
+        '''
+        The ending indexes for Para objects are tighter than those of
+        lists; the former properly bound the element, whereas the latter
+        add an additional line.
+        '''
+        tree = {}
+        current_header = {'c': ''}
+
+        def comp(key, value, format, meta):
+            if key == 'Header':
+
+                title = []
+                for v in value[2]:
+                    for vc in v['c'][1:]:
+                        outer = vc
+                        #print('+++', outer[0])
+                        if type(outer) == str:
+                            title.append(outer)
+                            continue
+                        elif type(outer[0]) == str:
+                            title.append(outer[0])
+                            continue
+                        elif 'c' in outer[0]:
+                            title.append(outer[0]['c'])
+                        else:
+                            title.append(' ')
+
+                current_header['c'] = ''.join([str(s) for s in title])
+
+            if key == 'BulletList' or key == 'OrderedList':
+                v = value if key == 'BulletList' else value[1]
+
+                for item in v:
+                    if not item:
+                        print(Fore.YELLOW + '\n[empty list item]' + Fore.RESET)
+                        continue
+
+                    pos   = item[0]['c'][0][2][0][1].split('@')[-1].split('-')
+                    start = pos[0]
+                    end   = pos[-1]
+
+                    sl, sc = map(int, start.split(':'))
+                    el, ec = map(int, end.split(':'))
+                    el = el - 1  # list-specific tail index has one extra line in parser
+                    
+                    while el-1 >= len(self.raw_lines) or not self.raw_lines[el-1].strip():
+                        el -= 1
+
+                    obj = {
+                        'c': [],
+                        'p': tree.get(sl),
+                        'v': ''.join(self.raw_lines[(sl-1):el]),
+                        'h': current_header['c'],
+                        'b': ((sl,sc),(el,ec)),
+                        't': 'list',
+                    }
+
+                    if obj['p'] is not None:
+                        obj['p']['c'].append(obj)
+
+                    for i in range(sl, el+1):
+                        tree[i] = obj
+
+            
+            if key == 'Para':
+                start = value[0]['c'][0][2][0][1].split('@')[-1].split('-')[0]
+                end   = value[-1]['c'][0][2][0][1].split('@')[-1].split('-')[-1]
+
+                sl, sc = map(int, start.split(':'))
+                el, ec = map(int, end.split(':'))
+
+                obj = {
+                    'c': [],
+                    'p': None,
+                    'v': ''.join(self.raw_lines[(sl-1):el]),
+                    'h': current_header['c'],
+                    'b': ((sl,sc),(el,ec)),
+                    't': 'para'
+                }
+
+                for i in range(sl, el+1):
+                    if tree.get(i) is None:
+                        tree[i] = obj
+
+        #cm = pp.convert_file(self.fullpath, format='commonmark+sourcepos', to='json')
+        cm = subp.check_output(["pandoc", "--from", "commonmark+sourcepos", "--to", "json", self.fullpath])
+        pf.applyJSONFilters([comp], cm)
+
+        return tree
+
+    def proto_process_linkdata(self, string, offset=0):
+        '''
+        Offset parameter to allow correction for strings that do not match
+        the content the self.tree is based on. Line numbers need to be shifted
+        in order for matches to align on proper lines. Mainly for metadata restriction
+        currently
+        '''
+        links = list(link_regex.finditer(string))
+        linkdata = defaultdict(list)
+        
+        bound_map = defaultdict(lambda: {'c':[None,None],'t':None,'n':[]})
+        for m in links:
+            # positional processing
+            start = m.start()
+            line = string.count('\n', 0, start) +1
+            col = start - string.rfind('\n', 0, start)
+            name = utils.title_to_fname(m.group(1))
+
+            text = '(will be removed)'
+            header = ''
+            context = self.tree.get(line+offset, '')
+            if not context or not context.get('b'): continue
+
+            # sl and el correspond to 1-indexed doc lines; sl-1 will push the
+            # right array index, but pushing at el will be the appropriate end
+            # (instead of displacing the final tight bound at el-1).
+            (sl,sc),(el,ec) = context['b']
+            
+            # index according to 0-indexed location where lines will be inserted
+            # for a given line, bound_map holds start and end char nums, if applicable
+            bound_map[sl-1]['c'][0] = sc
+            bound_map[el]['c'][1] = ec
+
+            # auxiliary info
+            bound_map[sl-1]['t'] = context.get('t')
+            bound_map[sl-1]['n'].append(name)
+            #bound_map[sl].append({'line':line,'col':col,'name':name,'type':'s'})
+            #bound_map[el].append({'line':line,'col':col,'name':name,'type':'e'})
+            
+        # add comments in reverse order to indices don't change
+        # during modification. also: if start and end on same line,
+        # the end insert will bump the start comment down one line,
+        # preserving desired order. No tracking needed
+        sorted_bounds = sorted(bound_map.keys(),reverse=True)
+        string_mod = string.split('\n')
+        special_pages = ['todo', 'thought', 'question']
+        for line in sorted_bounds:
+            lined = bound_map[line]
+            lchars = lined['c']
+            ltype = lined['t']
+            lname = lined['n']
+            n_match = [n for n in lname if n in special_pages]
+            
+            if lchars[0]:
+                if n_match:
+                    comment_str = '<span id="block-s@{}" class="block-spec-{}">'.format(line+1,n_match[0])
+                else:
+                    comment_str = '<span id="block-s@{}">'.format(line+1)
+
+                if ltype == 'list':
+                    string_mod[line-offset] = re.sub(
+                        pattern=r'^(\s*\S*? )',
+                        repl='\g<1>{}'.format(comment_str),
+                        string=string_mod[line-offset]
+                    )
+                else:
+                    if re.match(r'^(\s*\[\^[\w ]*\]: )',string_mod[line-offset]):
+                        # do the same thing for footnote prefixes as list items;
+                        # they seem to get grouped as Para objects. Careful with
+                        # footnote IDs, now just restricting to alphanum w/ spaces
+                        string_mod[line-offset] = re.sub(
+                            pattern=r'^(\s*\[\^[\w ]*\]: )',
+                            repl='\g<1>{}'.format(comment_str),
+                            string=string_mod[line-offset]
+                        )
+                    else:
+                        string_mod.insert(line-offset,comment_str)
+            if lchars[1]:
+                comment_str = '</span><!--block-e@{}-->'.format(line)
+                #comment_str = '<!--[panja::e@{}]-->'.format(line)
+                string_mod.insert(line-offset,comment_str)
+                
+        for m in links:
+            # positional processing
+            start = m.start()
+            line = string.count('\n', 0, start) +1
+            col = start - string.rfind('\n', 0, start)
+            name = utils.title_to_fname(m.group(1))
+
+            text = '(will be removed)'
+            header = ''
+            context = self.tree.get(line+offset, '')
+            if context:
+                if context.get('p'):
+                    header = context['p']['h']
+                    text = context['p']['v']
+                else:
+                    header = context['h']
+                    text = context['v']
+            else: continue
+           
+            linkdata[name].append({
+                'ref'    : self,
+                'line'   : line,
+                'col'    : col,
+                'context': text,
+                'links'  : self.process_links(text),
+                'header' : str(header),
+                'bounds' : context['b']
+            })
+
+        return linkdata, string_mod
+
     def process_linkdata(self, string, offset=0):
         '''
         Offset parameter to allow correction for strings that do not match
@@ -264,11 +469,12 @@ class Article:
             else: continue
            
             linkdata[name].append({
-                'ref':  self,
-                'line': line,
-                'col':  col,
+                'ref'    : self,
+                'line'   : line,
+                'col'    : col,
                 'context': text,
-                'header': str(header)
+                'links'  : self.process_links(text),
+                'header' : str(header)
             })
 
         return linkdata
@@ -287,6 +493,11 @@ class Article:
         self.links    = self.process_links(self.content)
         self.tree     = self.context_tree()
         self.linkdata = self.process_linkdata(self.content, self.raw_metadata.count('\n'))
+
+    def proto_process_structure(self):
+        self.links    = self.process_links(self.content)
+        self.tree     = self.proto_context_tree()
+        self.linkdata,self.marked_lines = self.proto_process_linkdata(self.content, self.raw_metadata.count('\n'))
 
     def process_reflinks(self, string):
         links = reflink_regex.findall(string)
@@ -528,8 +739,6 @@ class Article:
         return res if res else {}
 
 
-        
-
     def transform_links(self, string, path='', graph=None):
         nt = re.sub(
             pattern=link_regex,
@@ -629,7 +838,12 @@ class Article:
                 print(Fore.YELLOW + 'Rendering TikZ SVG {}'.format(svg_stem))
                 utils.tex.tikz2svg(tikz_src, svg_full_path)
 
-            return '![{}]({})'.format(caption, svg_site_path)
+            ## add tikz source (kinda hacky but no better option?)
+            #wrapped_src = '\n'.join(['<code>{}</code>'.format(l) for l in tikz_src.split('\n')])
+            #wrapped_src = '<details class="fig-tex-src nostyle"><summary>TeX source</summary>{}</details>'.format(wrapped_src)
+
+            #return '![{}{}]({})'.format(wrapped_src, caption, svg_site_path)
+            return '![{}]({}){{class="live-tex"}}'.format(caption, svg_site_path)
 
         nt = re.sub(
             pattern=r'!\[(.*?)\]\(\s*(\\begin{tikzpicture}.*?\\end{tikzpicture})\s*\)',
@@ -829,6 +1043,7 @@ class Article:
         return c
 
     def convert_html(self, metamd=None, pdoc_args=None, filters=None, fast=False, graph=None):
+        print('reg convert html')
         if metamd is None: metamd = []
         if pdoc_args is None: pdoc_args = []
         if filters is None: filters = []
@@ -868,7 +1083,6 @@ class Article:
         except RuntimeError:
             print(Fore.RED + 'Pandoc failed to convert content in file '+ self.name)
             raise
-
 
         # non-body pdoc args, manual for now
         mmd_args = [
@@ -916,3 +1130,92 @@ class Article:
                     string=html_text,
                     flags=re.DOTALL
                 )
+
+    def proto_convert_html(self, metamd=None, pdoc_args=None, filters=None, fast=False, graph=None):
+        if metamd is None: metamd = []
+        if pdoc_args is None: pdoc_args = []
+        if filters is None: filters = []
+
+        if self.metadata.get('toc') != 'false':
+            pdoc_args.append('--toc')
+            pdoc_args.append('--toc-depth=4')
+
+        self.html = {}
+        self.html.update(self.metadata)
+        
+        # these should really become pandoc filters, move function pandocfilters filters
+        # in regular location; can be location for all future modifiers (like tikz!)
+        marked_metadata = '<!--@s-metadata@-->\n' + '\n'.join(
+            [
+                '<!--@mpanja@s-{k}-->\n{v}\n\n<!--@mpanja@e-{k}-->'.format(
+                    k=k,
+                    v=self.metadata.get(k,'')
+                )
+                for k in metamd
+                if k in self.metadata
+        ]) + '\n<!--@e-metadata@-->'
+        marked_html = marked_metadata + '\n'.join(self.marked_lines)
+
+        content = self.transform_links(marked_html, graph=graph)
+        content = self.transform_task_headers(content, remove=True)
+        content = self.transform_tasks(content)
+        content = self.transform_tikz(content)
+        content = self.transform_pdftex(content)
+        content = self.transform_pdf_images(content)
+
+        try:
+            if fast:
+                content = misaka.html(content)
+            else:
+                # convert regular file content
+                content = self.conversion_wrapper(content,
+                                                       extra_args=pdoc_args,
+                                                       filters=filters)
+
+            # split metadata from body 
+            md_re = r'<!--@s-metadata@-->(.*)<!--@e-metadata@-->'
+            group_md_html = re.search(
+                pattern=md_re,
+                string=content,
+                flags=re.DOTALL,
+            )
+            if group_md_html: group_md_html = group_md_html.group(0)
+
+            self.html['content'] = re.sub(
+                pattern=md_re,
+                repl='',
+                string=content,
+                flags=re.DOTALL
+            )
+
+        except RuntimeError:
+            print(Fore.RED + 'Pandoc failed to convert content in file '+ self.name)
+            raise
+
+        # convert backlinks
+        for linklist in self.linkdata.values():
+            for link in linklist:
+                (sl,sc),(el,ec) = link['bounds']
+                m = re.findall(
+                    r'<span\sid=\"block-s@{s}\"(?:\sclass=.*?)?>\s*(.*)<!--block-e@{e}-->'.format(s=sl,e=el),
+                    string=self.html['content'],
+                    flags=re.DOTALL
+                )
+                if m: 
+                    link['html'] = m[0]
+                else:
+                    print('missed link {},{}'.format(sl,el))
+                    print('<span id=\"block-s@{s}\"(?:\sclass=.*?)>\s*(.*)</span><!--block-e@{e}-->'.format(s=sl,e=el))
+                    print('end missed')
+
+        # render extra metadata components to HTML
+        md_kre = r'<!--@mpanja@s-{k}-->(?:\s?<p>\s?)?(.*?)(?:\s?<\/p>\s?)?<!--@mpanja@e-{k}-->'
+        for key in metamd:
+            # we now convert everything so not specific rendering needed
+            if key in self.metadata and group_md_html:
+                m = re.search(
+                    pattern=md_kre.format(k=key),
+                    string=group_md_html,
+                    flags=re.DOTALL
+                )
+                if m: self.html[key] = m.group(1)
