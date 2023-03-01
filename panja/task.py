@@ -9,7 +9,7 @@
 # just us tw.tasks.filter(uuid=<x>) for the tasks
 # already filtered on page
 
-from tasklib import TaskWarrior
+from tasklib import TaskWarrior, Task
 from datetime import datetime
 import textwrap
 

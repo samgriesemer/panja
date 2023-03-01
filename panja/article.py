@@ -3,6 +3,7 @@ from collections import defaultdict
 from datetime import datetime
 import subprocess as subp
 from pathlib import Path
+from textwrap import dedent
 import yaml
 
 import pandocfilters as pf
@@ -12,6 +13,7 @@ from colorama import Fore
 
 from . import task
 from . import utils
+from . import convert
 
 # captures base link, anchors, display text; any combo of them
 link_regex = re.compile('\[\[([^\]]*?)(#[^\]]*?)?(?:\|([^\]]*?))?\]\]')
@@ -138,6 +140,25 @@ class Article:
                 metadata['citegen'] = '<b>[inline]</b> @{}'.format(metadata['citekey'])
             elif metadata['citedata'].get('citekey'):
                 metadata['citegen'] = '<b>[inline]</b> @{}'.format(metadata['citedata']['citekey'])
+
+            # process build targets
+            if metadata.get('build'):
+                metadata['build_tgts'] = {}
+                tgt_lst = metadata['build'].split(' ')
+
+                for tgt in tgt_lst:
+                    wiki_dir  = Path('/home/smgr/Documents/notes/')
+                    build_dir = Path(wiki_dir, 'build')
+
+                    if tgt in convert.alias_map:
+                        outp = Path(build_dir, tgt)
+                        outp.mkdir(parents=True, exist_ok=True)
+
+                        outp = Path(outp, Path(self.fullpath).stem+'.pdf')
+                        out = convert.alias_map[tgt](self.fullpath, outp)
+
+                        if out:
+                            metadata['build_tgts'][tgt] = str(Path(out).relative_to(wiki_dir))
 
             # task groups (for gantt primarily)
             metadata['task_groups'], metadata['task_list'] = self.process_task_groups(self.content)
@@ -960,6 +981,53 @@ class Article:
 
         return nt
 
+    def transform_audio(self, string):
+        '''
+        Transforms .pdf_tex files that are linked within Markdown images
+        '''
+        def repl(m):
+            caption = m.group(1)
+            wavfile = m.group(2)
+
+            abs_notes_prefix = '/home/smgr/Documents/notes/'
+
+            # generate stem filename from source hash
+            abs_wav_path = Path(abs_notes_prefix, wavfile)
+            abs_vtt_path = abs_wav_path.with_suffix('.vtt')
+
+            if not abs_vtt_path.exists(): pass
+                # do whisper.cpp processing; separate thread
+            
+            sub_html = ''
+            audio_name = abs_vtt_path.stem
+
+            if abs_vtt_path.exists():
+                rel_vtt_path = str(Path(wavfile).with_suffix('.vtt'))
+                sub_html += dedent(f'''
+                    <div class="rabbit-lyrics"
+                        data-media="[data-lyric-id='audio-{audio_name}']"
+                        data-vtt="{rel_vtt_path}">
+                    </div>''')
+
+            sub_html += dedent(f'''
+                <figcaption>
+                <audio data-lyric-id="audio-{audio_name}" controls>
+                    <source src="{wavfile}" type="audio/wav">
+                </audio>
+                </figcaption>''')
+
+            return f'<figure>{sub_html}<figcaption>{caption}</figcaption></figure>'
+
+
+        nt = re.sub(
+            pattern=r'!\[((?:[\s\S](?!!\[))*)\]\((audio\/.*?\.wav)\)',
+            repl=repl,
+            string=string,
+            #flags=re.DOTALL
+        )
+
+        return nt
+
     def transform_footnotes(self, string):
         return re.sub(
             pattern=footnote_regex,
@@ -1162,6 +1230,7 @@ class Article:
         content = self.transform_tikz(content)
         content = self.transform_pdftex(content)
         content = self.transform_pdf_images(content)
+        content = self.transform_audio(content)
 
         try:
             if fast:
@@ -1169,8 +1238,8 @@ class Article:
             else:
                 # convert regular file content
                 content = self.conversion_wrapper(content,
-                                                       extra_args=pdoc_args,
-                                                       filters=filters)
+                                                  extra_args=pdoc_args,
+                                                  filters=filters)
 
             # split metadata from body 
             md_re = r'<!--@s-metadata@-->(.*)<!--@e-metadata@-->'
@@ -1180,6 +1249,23 @@ class Article:
                 flags=re.DOTALL,
             )
             if group_md_html: group_md_html = group_md_html.group(0)
+
+            # extract TOC
+            md_toc = r"<nav class='toc'>(.*?)<\/nav>"
+            toc_html = re.search(
+                pattern=md_toc,
+                string=content,
+                flags=re.DOTALL,
+            )
+            if toc_html: toc_html = toc_html.group(0)
+            self.html['toc'] = toc_html
+
+            content = re.sub(
+                pattern=md_toc,
+                repl='',
+                string=content,
+                flags=re.DOTALL
+            )
 
             self.html['content'] = re.sub(
                 pattern=md_re,

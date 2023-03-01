@@ -461,8 +461,8 @@ class RMCache:
         dir_cache = {}
         id2name = {}
         for e in self.tree['Docs']:
-            dir_cache[e['DocumentID']] = e['parent']
-            id2name[e['DocumentID']] = e['visibleName']
+            dir_cache[e['DocumentID']] = e['Metadata']['parent']
+            id2name[e['DocumentID']] = e['Metadata']['visibleName']
 
         id2dir = {}
         for did, par in dir_cache.items():
@@ -492,8 +492,8 @@ class RMCache:
         print('Syncing "{}" to "{}"'.format(self.sync_from_path,self.sync_to_path))
 
         for e in tqdm(self.tree['Docs']):
-            name = e['visibleName']
-            rm_modtime = float(e['lastModified'])
+            name = e['Metadata']['visibleName']
+            rm_modtime = float(e['Metadata']['lastModified'])
             rm_path = self.id2dir[e['DocumentID']]
             rm_dir = rm_path.parents[0]
             rm_pdf = Path(name+'.pdf')

@@ -219,7 +219,7 @@ class Site(object):
             if not os.path.isabs(searchpath):
                 searchpaths[i] = os.path.join(basepath, searchpath)
 
-        # make any relative search paths absolute
+        # make any relative watch paths absolute
         for i, watchpath in enumerate(watchpaths):
             if not os.path.isabs(watchpath[0]):
                 watchpaths[i][0] = os.path.join(basepath, watchpath[0])
@@ -286,13 +286,15 @@ class Site(object):
         try:
             return self.env.get_template(template_name)
         except UnicodeDecodeError as e:
-            if template_name.split('.')[-1] == 'pdf':
+            #if template_name.split('.')[-1] == 'pdf':
+            try:
                 self.logger.info(Fore.RED + 'unable to render template {}'.format(template_name) + Fore.RESET)
                 template = Template('')
                 template.name = template_name
                 template.filename = self.find_searchpath(template_name)
                 return template
-            raise UnicodeError('Unable to decode %s: %s' % (template_name, e))
+            except UnicodeError as e:
+                raise UnicodeError('Unable to decode %s: %s' % (template_name, e))
         except TemplateSyntaxError as e:
             if template_name.split('.')[-1] == 'md':
                 self.logger.info(Fore.RED + 'jinja doesn\'t like syntax in {}, ignoring'.format(template_name) + Fore.RESET)
@@ -300,7 +302,7 @@ class Site(object):
                 template.name = template_name
                 template.filename = self.find_searchpath(template_name)
                 return template
-            raise TemplateSyntaxError
+            raise TemplateSyntaxError('template syntax %s' % template_name, 305)
 
     def get_context(self, template):
         """Get the context for a template.
@@ -571,10 +573,13 @@ class Site(object):
 
 
             def md_reload(path):
-                p = Path(path)
-                if p.suffix == '.md':
-                    return [p.stem]
+                # full filepath is passed in and needs to be turned into a template name;
+                # just like what is done inside the watch_handler
+                tname = self.template_names_from_filepaths([path])[0]
+                if not self.is_static(tname):
+                    return [tname, Path(tname).stem]
                 else:
+                    # no whitelist i.e. reload all
                     return []
 
             # add searchpaths to watch list, need to be globs
@@ -641,21 +646,39 @@ class Site(object):
                 raise Exception('Couldn\'t find overlapping search path \
                                 for file with path {}'.format(f))
 
-        template_names = []
-        for f, spath in spaths:
-            filename = os.path.relpath(f, spath)
-            template_names.append(filename)
-            if self.is_static(filename):
-                files = self.get_dependencies(filename)
+        template_names = self.template_names_from_filepaths(files)
+        for template_name in template_names:
+            if self.is_static(template_name):
+                files = self.get_dependencies(template_name)
                 self.copy_static(files)
             else:
-                templates = self.get_dependencies(filename)
+                templates = self.get_dependencies(template_name)
                 # for now, ignore root template; require site restart
-                if self.is_partial(filename): continue
+                if self.is_partial(template_name): continue
                 self.render_templates(templates)
 
         if self.postreload:
             self.postreload(self, map(lambda t:self.get_template(t),template_names)) 
+
+    def template_names_from_filepaths(self, filepaths):
+        #spaths = []
+        template_names = []
+        for f in filepaths:
+            spath = None
+            for searchpath in self.searchpaths:
+                if f.startswith(searchpath):
+                    spath = searchpath
+                    break
+            #spaths.append((f, spath))
+            template_name = os.path.relpath(f, spath)
+            template_names.append(template_name)
+            
+        #for f, spath in spaths:
+        #    if spath is None:
+        #        raise Exception('Couldn\'t find overlapping search path \
+        #                        for file with path {}'.format(f))
+
+        return template_names
 
     def __repr__(self):
         return "%s('%s', '%s')" % (type(self).__name__,

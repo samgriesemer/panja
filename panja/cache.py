@@ -2,6 +2,7 @@ import os
 import dill as pickle
 from pathlib import Path
 from datetime import datetime
+
 # can elect to only update backlink pages (based on modified times) when the user requests
 # the backlink buffer i.e. not doing it automatically as they write to files in the wiki.
 # Or you could do this, trying to always keep everything up to date at the earliest
@@ -24,7 +25,8 @@ from datetime import datetime
 ## mod_time on disk is different from that stored; will always be different if not yet
 ## loaded).
 
-class Cache():
+
+class Cache:
     def __init__(self, name, path, default=None):
         self.name = name
         self.path = path
@@ -32,14 +34,14 @@ class Cache():
 
         self.obj = None
         self.file = Path(path, name)
-        self.file = self.file.with_suffix(self.file.suffix+'.pkl')
+        self.file = self.file.with_suffix(self.file.suffix + ".pkl")
         self.rtime = -1
 
         Path(path).mkdir(parents=True, exist_ok=True)
         self.file.touch()
 
-        #if not self.file.exists():
-            #raise FileNotFoundError('Cache "{}" not found at cache path {}'.format(self.name, self.path))
+        # if not self.file.exists():
+        # raise FileNotFoundError('Cache "{}" not found at cache path {}'.format(self.name, self.path))
 
     def load(self):
         if self.rtime < self.file.stat().st_mtime:
@@ -49,13 +51,13 @@ class Cache():
                     return self.obj
                 else:
                     return None
-            with self.file.open('rb') as f:
+            with self.file.open("rb") as f:
                 self.obj = pickle.load(f)
             self.rtime = datetime.now().timestamp()
         return self.obj
 
     def write(self, obj=None):
-        if obj is None: obj = self.obj
-        with self.file.open('wb') as f:
+        if obj is None:
+            obj = self.obj
+        with self.file.open("wb") as f:
             pickle.dump(obj, f)
-

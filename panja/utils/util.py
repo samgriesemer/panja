@@ -10,7 +10,6 @@ from pathlib import Path
 from colorama import Fore
 import tqdm
 
-
 def copy_file(ipath, opath):
     shutil.copy2(ipath, opath)
     
@@ -137,15 +136,23 @@ def parse_anchor(anchor_str, hmap=None):
     return tail
 
 def parse_sctl_timers():
-    timer_rx = r'(.*) PDT.*left.*ago\s*(.*).timer.*'
+    #timer_rx = r'(.*T).*left.*ago\s*(.*).timer.*'
+    timer_rx = r'(.*T).*left.* (.*)\.timer'
     cmd      = 'systemctl list-timers'
     cmd_out  = subprocess.check_output(cmd.split(' ')).decode('utf-8')
-    ftime    = '%a %Y-%m-%d %H:%M:%S'
+    ftime    = '%a %Y-%m-%d %H:%M:%S %Z'
 
     return list(map(
         lambda x: [datetime.strptime(x[0],ftime).timestamp(),x[1]],
         re.findall(timer_rx, cmd_out)
     ))
+
+def parse_sctl_services():
+    service_rx = r'^  (\S*)\s*(\S*)\s*(\S*)\s*(\S*)\s*(.*)$'
+    cmd        = 'systemctl list-units --all --type=service'
+    cmd_out    = subprocess.check_output(cmd.split(' ')).decode('utf-8')
+    return re.findall(service_rx, cmd_out, re.MULTILINE)
+
 
 def pdf_preview(pdf_path, img_path, only_mod=True):
     pdf_path = Path(pdf_path)
@@ -169,7 +176,8 @@ def pdf_preview(pdf_path, img_path, only_mod=True):
         
     if img_path.exists(): shutil.rmtree(img_path)
     img_path.mkdir(parents=True, exist_ok=True)
-    subprocess.run(['pdftoppm',pdf_path,str(Path(img_path,'img')),'-png','-progress','-l','50'])
+    print('POPPLER RUN: ',' '.join(['pdftoppm',str(pdf_path),str(Path(img_path,'img')),'-png','-progress','-l','50']))
+    subprocess.run(['pdftoppm',str(pdf_path),str(Path(img_path,'img')),'-png','-progress','-l','50'])
 
 
 def src_hash(module, src, ext=None):
@@ -209,3 +217,68 @@ class TqdmLoggingHandler(logging.StreamHandler):
             raise
         except:
             self.handleError(record)
+
+
+"""
+    ListeningSocketHandler
+    ======================
+    A python logging handler.
+    logging.handlers.SocketHandler is a TCP Socket client that sends log
+    records to a tcp server.
+
+    This class is the opposite.
+
+    When a TCP client connects (e.g. telnet or netcat), new log records
+    are sent through the tcp connection.
+"""
+import socket
+import threading
+class ListeningSocketHandler(logging.Handler):
+    def __init__(self, port=0, ipv6=False):
+        super(ListeningSocketHandler, self).__init__()
+        if ipv6:
+            a = socket.socket(socket.AF_INET6)
+            a.bind(("::", port))
+        else:
+            a = socket.socket(socket.AF_INET)
+            a.bind(("0.0.0.0", port))
+        self._acceptor = a
+        self._acceptor.listen(1)
+        self._conn = None
+
+        def start_listening(tsh):
+            while True:
+                try:
+                    conn, addr = tsh._acceptor.accept()
+                    tsh._conn = conn.makefile('w')
+                except socket.error:
+                    pass
+
+        self._accept_thread = threading.Thread(target=start_listening, args=(self,))
+        self._accept_thread.daemon = True
+        self._accept_thread.start()
+
+    def emit(self, record):
+        if self._conn is None:
+            # Silently drop the log
+            return
+        try:
+            self._conn.write(record.getMessage())
+            self._conn.write("\n")
+            self._conn.flush()
+        except socket.error:
+            self._conn = None
+
+    def flush(self):
+        if self._conn:
+            self._conn.flush()
+
+    def getsockname(self):
+        return self._acceptor.getsockname()
+
+
+def thread_func(func):
+    def wrapped(*args, **kwargs):
+        thread = threading.Thread(target=func, args=args, kwargs=kwargs)
+        thread.start()
+    return wrapped
